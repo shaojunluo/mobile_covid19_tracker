@@ -1,11 +1,12 @@
 # mobile_covid19_tracker
-Track COVID19 patient from mobile data
+
+Track COVID19 patient and its closed contact from mobile data.
 
 ## Folder Structure
 
 ### Research Codes
 
-All research code should put into `research` folder and organized by author's name. Please write a small readme if available.
+All research code should put into `research` folder and organized by author's name. Please write a small README if available.
 
 ### Staging Codes
 
