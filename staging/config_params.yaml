@@ -11,22 +11,22 @@ ingestion:
 
 # parameter for step 1: track infected person
 track.person:
-    patient.higor:
-        input: "patient_input/list_of_infected.csv"
-        output.folder: "patient_track"
-        day.before: 15
-        day.after: 15
-    # Add other field of person you want to track here:
-    # type of person : 
-    #    field1 : value1
-    #    field2 : value2
-    #    ....
+    # this is the running parameter of all the 
+    person.type: "patient.higor" # which subset we choose 
+    day.before: 15 # track days before infected
+    day.after: 15  # track days after infected
 
 # parameter for step 2: check close contact
 track.close_contact:
-    patient.higor:
-        input.folder: "patient_track"
-        output.folder: "close_contact"
-        distance: "10m"
-        minute.before:  2
-        minute.after: 2
+    distance.minimum: "8m"
+    minute.before: 10
+    minute.after: 10
+
+# ===========  List the pipline file of every patient resources ================
+
+patient.higor:
+    input.file: "patient_input/list_of_infected.csv"
+    folders:  
+        track: "patient_track"                # step1 output
+        close_contact: "close_contact"   # step2 output
+        result: "result"    # result folder

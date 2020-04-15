@@ -1,11 +1,14 @@
 import os
-import yaml
+from ast import literal_eval
+from functools import partial
 from glob import glob
 from hashlib import md5
-
+from multiprocessing import Pool
 from time import time
-import pandas as pd
+
 import numpy as np
+import pandas as pd
+import yaml
 from elasticsearch import Elasticsearch
 
 from lib_espandas import Espandas
@@ -147,7 +150,7 @@ def read_to_elastic(file_, host_url = 'http://localhost', port ='9200', n_thread
     # exporting to elastic search
     esp.es_write(df, index_name, uid_name = 'reference_id', geo_col_dict= None, thread_count = n_thread)
     # exporting
-    print(f'Index {index_name} Time Lapsed: {(time() - start_time)/60 :.2f} min')
+    print(f'Index {index_name} Time Lapsed: {(time() - start_time)/60 :.2f} min', flush = True)
     # safely close session
     esp.client.transport.connection_pool.close()
     return index_name
@@ -190,7 +193,7 @@ def query_track(es, mobile_id, index_name):
         }
     result = es.search(index = index_name, body = body)
     if len(result['hits']['hits']) == 10000:
-        print('return cap 10000 hit')
+        print('return cap 10000 hit', flush = True)
     return [r['_source'] for r in result['hits']['hits']]
 
 # build the track of specific person
@@ -207,7 +210,7 @@ def build_track(es, row, output_folder = 'patient_track'):
     # manipulate the result
     df =pd.DataFrame(records)                  # construct new dataframes
     if len(df) == 0:
-        print(f"ID {row['mobileId']} out of scope, skip")
+        print(f"ID {row['mobileId']} out of scope, skip",flush = True)
     else:
         df['acquisitionTime'] = pd.to_datetime(df['acquisitionTime'])
         df = df.sort_values('acquisitionTime')     # sort by time
@@ -238,12 +241,12 @@ def processing_track_df(input_file, person_type, days_before = 15, days_after = 
 # track a list of persons
 def track_persons(query_df, output_folder, host_url = 'http://localhost', port = "9200"):
     start_time = time()
-    print(f"Tracking: {len(query_df)} persons")
+    print(f"Tracking: {len(query_df)} persons",flush = True)
     # tracking the trace of every person. Don't need any parallel becasue it is fast in general.
     es = Elasticsearch([host_url +':'+ port],timeout=600)
     query_df.apply(lambda row: build_track(es, row, output_folder= output_folder), axis = 1)
     es.transport.connection_pool.close()
-    print(f'Final available IDs: {len(glob(output_folder + "/*.csv"))}, Time Lapse {(time() - start_time)/60:.2f}min')
+    print(f'Final available IDs: {len(glob(output_folder + "/*.csv"))}, Time Lapse {(time() - start_time)/60:.2f}min',flush = True)
 
 ### =================== utiles for close contact ================== ##        
 
@@ -271,10 +274,13 @@ def space_query(lat, lon, distance):
     return body
 
 # perform the combined queries
-def combine_queries(time_queries, space_queries,size):
+def combine_queries(time_queries, space_queries, query_id, size):
     body = {"size" : size,
             "query": {
                 "bool": {
+                    "must_not" : {
+                            "term" : { "mobileId" : query_id }
+                    },
                     "must": [
                         time_queries,
                         {"bool": space_queries}
@@ -284,15 +290,34 @@ def combine_queries(time_queries, space_queries,size):
         }
     return body
 
+# generate concatct records
+def generate_contact_record(hit, row):
+    hit['targetLat'] = hit['location'][0]
+    hit['targetLong'] = hit['location'][1]
+    hit['sourceTime'] = row['acquisitionTime']
+    hit['sourceLat'] = row['lat']
+    hit['sourceLong'] = row['long']
+    hit['sourceMovingRate'] = row['movingRate']
+    hit['sourceId'] = row['mobileId']
+    return hit
+
 # get close contact of 1 point
 def get_close_contact(es, row, d = '10m', index_prefix = ''):
     index_name = index_prefix + row['acquisitionTime'].strftime('%m_%d').lower() # get the index time to query!
     time_queries = time_query(row['startTime'], row['endTime']) # prepare time query
     space_queries = space_query(row['lat'], row['long'], distance = d) # prepare space query
-    body = combine_queries(time_queries, space_queries, size = 10000) # combine queries
+    body = combine_queries(time_queries, space_queries, row['mobileId'], size = 10000) # combine queries
     result = es.search(index = index_name, body = body) # query
-    # output result
-    return [r['_source'] for r in result['hits']['hits'] if r['_source']['mobileId']!= row['mobileId']]
+    # process valid hits
+    return [generate_contact_record(hit['_source'], row) for hit in result['hits']['hits']]
+
+# generate summary file
+def agg_close_contacts(df):
+    d = {}
+    d['hits'] = len(df)
+    d['med_targetMovingRate'] = df['targetMovingRate'].median()
+    d['med_sourceMovingRate'] = df['sourceMovingRate'].median()
+    return pd.Series(d)
 
 # track close contact for one patient and output to files
 def track_close_contact(file_, output_folder, minutes_before = 3, minutes_after = 3, distance = '10m', 
@@ -312,9 +337,60 @@ def track_close_contact(file_, output_folder, minutes_before = 3, minutes_after 
     
     # apply to every row and then concat to final close contact table
     close_contact = pd.DataFrame(df.apply(lambda row: get_close_contact(es, row, d = distance, index_prefix = index_prefix),axis = 1).sum())
-    
-    # save file
-    close_contact.to_csv(output_folder +'/'+ os.path.basename(file_), index = False)
     # safely close connection
     es.transport.connection_pool.close()
-    print(f'File {os.path.basename(file_)}: time Lapsed: {(time()-start_time)/60:.2f}min')
+    # if it is null result
+    if len(close_contact) == 0:
+        print(f'File {os.path.basename(file_)}: No contacts. Time Lapsed: {(time()-start_time)/60:.2f}min', flush = True)
+        return close_contact
+    # save file
+    close_contact = close_contact.rename(columns = {'movingRate':'targetMovingRate', 
+                                                    'mobileId':'targetId',
+                                                    'acquisitionTime':'targetTime'})
+    # rearrage dataframes
+    close_contact = close_contact[['sourceId','sourceTime','sourceLat','sourceLong','sourceMovingRate',
+                                   'targetId','targetTime','targetLat','targetLong','targetMovingRate']]
+    # sort values
+    close_contact = close_contact.sort_values(['sourceTime','targetTime'])
+    # save result
+    close_contact.to_csv(output_folder +'/'+ os.path.basename(file_), index = False)
+    
+    print(f'File {os.path.basename(file_)}: time Lapsed: {(time()-start_time)/60:.2f}min', flush = True)
+    # get the summary of close contact
+    close_contact_summary = close_contact.groupby('targetId').apply(agg_close_contacts)
+    close_contact_summary['sourceId'] = os.path.basename(file_).split('.')[0]
+    return close_contact_summary.reset_index()
+
+# write close contact summary
+def close_contact_summary(dfs, result_folder):
+    print('Generating Summary')
+    if not os.path.exists(result_folder):
+        os.mkdir(result_folder)
+    # contact list
+    df = pd.concat(dfs, ignore_index = True)
+    # save result
+    df.to_csv(result_folder + '/close_contact_summary.csv', index = False)
+
+## ==================== Select subset of patient from close contact list ===================
+
+# join close contact table one by one
+def join_close_contact(file_, patient_list, id_col):
+    print(f'joining: {file_}')
+    df = pd.read_csv(file_)
+    # select patient subset
+    df = df.merge(patient_list[id_col], left_on = 'targetId', right_on = id_col,how = 'inner')
+    df = df.drop(columns = [id_col])
+    return df
+
+# get the close contact subsets
+def select_close_contact_subset(input_file, person_type, query_files, n_workers = 4):
+    patient_list = pd.read_csv(input_file) # read patient list
+    id_col = MAPPING['track.person'][person_type]['id']
+    func = partial(join_close_contact, patient_list = patient_list, id_col = id_col)
+    # usin parallel for processing
+    with Pool(n_workers) as p:
+        dfs = list(p.map(func, query_files))
+    df = pd.concat(dfs).sort_values(['sourceId','sourceTime','targetTime'])
+    return df
+    
+

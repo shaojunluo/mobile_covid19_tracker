@@ -19,14 +19,3 @@ track.person:
   patient.higor:
     date: "sympton_date"
     id:   "infected_uid"
-
-# close contact is from elasticsearch ontologies
-track.close_contact:
-  # from track of patient
-  patient.track:
-    id: "mobileId"
-    time: "acquisitionTime"
-    location: "location"
-    moving_rate: "movingRate"
-  # from place of interest
-  #palce:

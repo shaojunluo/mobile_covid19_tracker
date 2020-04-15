@@ -1,20 +1,22 @@
 import yaml
 import lib_utils
 
-# specify the person you want to track
-person_type = 'patient.higor'
-
 # read parameter for the step
 with open('config_params.yaml', 'r') as stream:
     params = yaml.safe_load(stream)
+    # elasticserch related params
     HOST_URL = params['elasticsearch']['host']
     PORT = params['elasticsearch']['port']
-    in_file =    params['track.person'][person_type]['input']
-    out_folder = params['track.person'][person_type]['output.folder'] 
-    d_before =   params['track.person'][person_type]['day.before']
-    d_after =    params['track.person'][person_type]['day.after']
+    # days to query
+    d_before =   params['track.person']['day.before']
+    d_after =    params['track.person']['day.after']
+    # I/O location
+    person_type = params['track.person']['person.type'] # read the person you want to track
+    in_file =    params[person_type]['input.file']
+    out_folder = params[person_type]['folders']['track']
 
 # get the clean list of person
+print(f'running query for "{person_type}"')
 query_df = lib_utils.processing_track_df(in_file, person_type, 
                                          days_before = d_before, 
                                          days_after = d_after,

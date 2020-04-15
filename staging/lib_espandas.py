@@ -96,7 +96,7 @@ class Espandas(object):
                            '_id': record[uid_name],
                            '_source': record}
         
-        # use parallel_bulk
+        # use parallel_bulk streamming
         actions = helpers.parallel_bulk(self.client, 
                                         generate_dict(df,uid_name,index), 
                                         thread_count= thread_count)
