@@ -19,8 +19,8 @@ track.person:
 # parameter for step 2: check close contact
 track.close_contact:
     distance.minimum: "8m"
-    minute.before: 10
-    minute.after: 10
+    minute.before: 15
+    minute.after: 15
 
 # ===========  List the pipline file of every patient resources ================
 
