@@ -75,7 +75,7 @@ def get_index_name(file_, prefix = ''):
 
 # calculate derivativation of uneven time interval
 def uneven_derivative(df_sorted, col, t_col, group_col = None):
-    # calculate dx/t
+    # calculate dx/dt
     # see paper here https://www.tandfonline.com/doi/pdf/10.3402/tellusa.v22i1.10155
     if group_col is None:
         dt = df_sorted[t_col].diff(1).dt.seconds.fillna(1)
@@ -124,7 +124,8 @@ def process_for_ES(file_):
     df['reference_id'] = df.apply(lambda row: hash_record(row),axis = 1)
     df = df.drop_duplicates(subset = 'reference_id')
     # transfer to time stamp
-    df[t_col] = pd.to_datetime(df[t_col],unit ='s') # transfer time stamp
+    df[t_col] = pd.to_datetime(df[t_col],unit ='s',utc = True) # transfer time stamp
+    df[t_col] = df[t_col].dt.tz_convert('America/Fortaleza') # convert time zone
     
     # add velocity guess and sort table
     df = add_moving_rate(df, 'movingRate', 
@@ -292,24 +293,55 @@ def combine_queries(time_queries, space_queries, query_id, size):
 
 # generate concatct records
 def generate_contact_record(hit, row):
-    hit['targetLat'] = hit['location'][0]
-    hit['targetLong'] = hit['location'][1]
-    hit['sourceTime'] = row['acquisitionTime']
-    hit['sourceLat'] = row['lat']
-    hit['sourceLong'] = row['long']
-    hit['sourceMovingRate'] = row['movingRate']
-    hit['sourceId'] = row['mobileId']
-    return hit
+    result = {}
+    
+    result['sourceRefId'] = row['reference_id']
+    result['sourceId'] = row['mobileId']
+    result['sourceTime'] = row['acquisitionTime']
+    result['sourceLat'] = row['lat']
+    result['sourceLong'] = row['long']
+    result['sourceMovingRate'] = row['movingRate']
+    
+    result['targetRefId'] = hit['_id']
+    result['targetId'] = hit['_source']['mobileId']
+    result['targetTime'] = hit['_source']['acquisitionTime']
+    result['targetLat'] = hit['_source']['location'][0]
+    result['targetLong'] = hit['_source']['location'][1]
+    result['targetMovingRate'] = hit['_source']['movingRate']
+    
+    return result
+
+# generate self-concatct records
+def generate_self_link(row):
+    self_link = {}
+    self_link['sourceRefId'] = row['reference_id']
+    self_link['sourceId'] = row['mobileId']
+    self_link['sourceTime'] = row['acquisitionTime']
+    self_link['sourceLat'] = row['lat']
+    self_link['sourceLong'] = row['long']
+    self_link['sourceMovingRate'] = row['movingRate']
+    
+    self_link['targetRefId'] = row['reference_id']
+    self_link['targetId'] = row['mobileId']
+    self_link['targetTime'] = row['acquisitionTime']
+    self_link['targetLat'] = row['lat']
+    self_link['targetLong'] = row['long']
+    self_link['targetMovingRate'] = row['movingRate']
+    return self_link
 
 # get close contact of 1 point
-def get_close_contact(es, row, d = '10m', index_prefix = ''):
+def get_close_contact(es, row, d = '10m', index_prefix = '', self_link = True):
     index_name = index_prefix + row['acquisitionTime'].strftime('%m_%d').lower() # get the index time to query!
     time_queries = time_query(row['startTime'], row['endTime']) # prepare time query
     space_queries = space_query(row['lat'], row['long'], distance = d) # prepare space query
     body = combine_queries(time_queries, space_queries, row['mobileId'], size = 10000) # combine queries
     result = es.search(index = index_name, body = body) # query
+    records = [generate_contact_record(hit, row) for hit in result['hits']['hits']] # generate records
+    # attach self link if required
+    if self_link:
+        records.append(generate_self_link(row))
     # process valid hits
-    return [generate_contact_record(hit['_source'], row) for hit in result['hits']['hits']]
+    return records
 
 # generate summary file
 def agg_close_contacts(df):
@@ -321,7 +353,7 @@ def agg_close_contacts(df):
 
 # track close contact for one patient and output to files
 def track_close_contact(file_, output_folder, minutes_before = 3, minutes_after = 3, distance = '10m', 
-                        host_url = 'http://localhost', port = '9200', index_prefix = ''):
+                        host_url = 'http://localhost', port = '9200', index_prefix = '',self_link = True):
     start_time = time()
     # create dir if not exist
     if not os.path.exists(output_folder):
@@ -334,22 +366,16 @@ def track_close_contact(file_, output_folder, minutes_before = 3, minutes_after 
     # get the neighbor time
     df['startTime'] = (df['acquisitionTime'] - pd.Timedelta(minutes = minutes_before)).dt.strftime('%Y-%m-%dT%H:%M:%S')
     df['endTime'] = (df['acquisitionTime'] + pd.Timedelta(minutes = minutes_after)).dt.strftime('%Y-%m-%dT%H:%M:%S')
-    
     # apply to every row and then concat to final close contact table
-    close_contact = pd.DataFrame(df.apply(lambda row: get_close_contact(es, row, d = distance, index_prefix = index_prefix),axis = 1).sum())
+    close_contact = pd.DataFrame(df.apply(lambda row: get_close_contact(es, row, d = distance, 
+                                                                        index_prefix = index_prefix,
+                                                                        self_link = self_link),axis = 1).sum())
     # safely close connection
     es.transport.connection_pool.close()
-    # if it is null result
+    # if it is null result, the early return
     if len(close_contact) == 0:
         print(f'File {os.path.basename(file_)}: No contacts. Time Lapsed: {(time()-start_time)/60:.2f}min', flush = True)
         return close_contact
-    # save file
-    close_contact = close_contact.rename(columns = {'movingRate':'targetMovingRate', 
-                                                    'mobileId':'targetId',
-                                                    'acquisitionTime':'targetTime'})
-    # rearrage dataframes
-    close_contact = close_contact[['sourceId','sourceTime','sourceLat','sourceLong','sourceMovingRate',
-                                   'targetId','targetTime','targetLat','targetLong','targetMovingRate']]
     # sort values
     close_contact = close_contact.sort_values(['sourceTime','targetTime'])
     # save result
@@ -391,6 +417,7 @@ def select_close_contact_subset(input_file, person_type, query_files, n_workers 
     with Pool(n_workers) as p:
         dfs = list(p.map(func, query_files))
     df = pd.concat(dfs).sort_values(['sourceId','sourceTime','targetTime'])
-    return df
+        
+    return df.drop_duplicates()
     
 

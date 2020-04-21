@@ -2,7 +2,7 @@
 elasticsearch:
     host: "http://localhost"
     port: "9200"
-    thread: 6
+    thread: 10
 
 # ontology for step 0: data ingestion
 ingestion:
@@ -12,9 +12,9 @@ ingestion:
 # parameter for step 1: track infected person
 track.person:
     # this is the running parameter of all the 
-    person.type: "patient.higor" # which subset we choose 
-    day.before: 15 # track days before infected
-    day.after: 15  # track days after infected
+    person.type: "patient.apr13" # which subset we choose 
+    day.before: 14 # track days before infected
+    day.after: 14  # track days after infected
 
 # parameter for step 2: check close contact
 track.close_contact:
@@ -25,8 +25,19 @@ track.close_contact:
 # ===========  List the pipline file of every patient resources ================
 
 patient.higor:
-    input.file: "patient_input/list_of_infected.csv"
+    input.file: "patient_input/list_of_infected.csv" # read infected people
     folders:  
-        track: "patient_track"                # step1 output
-        close_contact: "close_contact"   # step2 output
-        result: "result"    # result folder
+        track: "patient_track"                # step1 output of patient track
+        close_contact: "close_contact"   # step2 output patient to all contact
+        result: "result"    # result folder: 1. summary stats of close contact
+                            #                2. patient to patient contact
+                            #                3. summary of patient to patient contact
+
+patient.apr13:
+    input.file: "patient_input/Association_Apri_13_20m_0.75.csv" # read infected people
+    folders:  
+        track: "patient_track_apr13"                # step1 output of patient track
+        close_contact: "close_contact_apr13"   # step2 output patient to all contact
+        result: "result_apr13"    # result folder: 1. summary stats of close contact
+                                  #                2. patient to patient contact
+                                  #                3. summary of patient to patient contact 

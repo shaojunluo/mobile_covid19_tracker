@@ -19,3 +19,7 @@ track.person:
   patient.higor:
     date: "sympton_date"
     id:   "infected_uid"
+
+  patient.apr13:
+    date: "date"
+    id: "Mobile_id"

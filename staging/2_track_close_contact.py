@@ -28,7 +28,7 @@ files = glob(input_folder + '/*.csv')
 # Track the list of close contact
 func = partial(lib_utils.track_close_contact, output_folder = output_folder, 
                minutes_before = m_before, minutes_after = m_after, distance = min_d,
-               host_url = HOST_URL, port = PORT, index_prefix = 'fortaleza_')
+               host_url = HOST_URL, port = PORT, index_prefix = 'fortaleza_',self_link = True)
 
 # Parrellel processing patient to all
 with Pool(10) as p:
