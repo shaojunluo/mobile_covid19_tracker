@@ -1,10 +1,14 @@
 import yaml
 from glob import glob
 import os
+import sys
 from functools import partial
 from multiprocessing import Pool
 
-import lib_utils
+# add the directory
+sys.path.append(os.path.dirname(__file__) + '/..')
+# read the relavant libaries
+import lib.lib_close_contact as utils
 
 # read parameter of the step
 with open(os.path.dirname(__file__) + '/../config_params.yaml', 'r') as stream:
@@ -27,16 +31,16 @@ print(f'running query for "{person_type}"')
 # read files
 files = glob(input_folder + '/*.csv')
 # Track the list of close contact
-func = partial(lib_utils.track_close_contact, output_folder = output_folder, person_type = person_type, 
-               minutes_before = m_before, minutes_after = m_after, distance = min_d,
-               host_url = HOST_URL, port = PORT, index_prefix = 'fortaleza_')
+func = partial(utils.track_close_contact, output_folder = output_folder, person_type = person_type, 
+                                          minutes_before = m_before, minutes_after = m_after, distance = min_d,
+                                          host_url = HOST_URL, port = PORT, index_prefix = 'fortaleza_')
 
-# Parrellel processing patient to all
+# Parrellel processing patient to all 
 with Pool(11) as p:
     dfs = list(p.map(func, files))
 
 # get the summary
-lib_utils.close_contact_summary(dfs, result_folder)
+utils.close_contact_summary(dfs, result_folder)
 
 # shorten the list
-lib_utils.shorten_close_contact(output_folder, result_folder +'/close_contact_stats.csv')
+utils.shorten_close_contact(output_folder, result_folder +'/close_contact_stats.csv')

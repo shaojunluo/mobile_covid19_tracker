@@ -1,7 +1,12 @@
 import yaml
 from glob import glob
-import lib_utils
 import os
+import sys
+
+# add the directory
+sys.path.append(os.path.dirname(__file__) + '/..')
+# read the relavant libaries
+import lib.lib_ingestion as utils
 
 # load configuration file and fetch files
 with open(os.path.dirname(__file__) + '/../config_params.yaml','r') as f:
@@ -17,11 +22,11 @@ files = glob(input_folder + '/*.csv') # fetch files
 ### ======================== Sequencial Processing ========================
 ### Best Run in local machine 
 
-index_list = [lib_utils.read_to_elastic(file_, host_url = HOST_URL, 
-                                               port = PORT, 
-                                               n_thread = n_thread,
-                                               mode = mode,
-                                               prefix = 'fortaleza_') for file_ in files]
+index_list = [utils.read_to_elastic(file_, host_url = HOST_URL, 
+                                        port = PORT, 
+                                        n_thread = n_thread,
+                                        mode = mode,
+                                        prefix = 'fortaleza_') for file_ in files]
     
 ### ======================== Parrellel Processing =========================
 ### use this if you have large machine and querying other server
@@ -36,4 +41,4 @@ index_list = [lib_utils.read_to_elastic(file_, host_url = HOST_URL,
 #     index_list = list(p.map(func, files))
 
 ### update ingested list
-lib_utils.add_ingested_index(index_list)
+utils.add_ingested_index(index_list)

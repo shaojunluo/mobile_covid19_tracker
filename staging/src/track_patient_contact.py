@@ -1,7 +1,10 @@
 import yaml
 from glob import glob
-import lib_utils
 import os
+import sys
+
+sys.path.append(os.path.dirname(__file__) + '/..')
+import lib.lib_research as utils
 
 # read parameter and dependencies of the step
 with open(os.path.dirname(__file__) + '/../config_params.yaml','r') as f:
@@ -15,7 +18,7 @@ with open(os.path.dirname(__file__) + '/../config_params.yaml','r') as f:
 
 query_files = glob(input_folder + '/*.csv') # read the files 
 # get the subset of close contact patient
-df = lib_utils.select_close_contact_subset(input_file, person_type,query_files, n_workers = 12)
+df = utils.select_close_contact_subset(input_file, person_type,query_files, n_workers = 12)
 # df.save 
 df.to_csv(result_folder + '/close_contact_patient.csv',index = False)
 

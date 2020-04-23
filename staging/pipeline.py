@@ -1,18 +1,7 @@
 from datetime import datetime, timedelta
-# The DAG object; we'll need this to instantiate a DAG
 from airflow import DAG
-# Operators; we need this to operate!
 from airflow.operators.bash_operator import BashOperator
-from airflow.utils.dates import days_ago
-# These args will get passed on to each operator
-# You can override them on a per-task basis during operator initialization
-# The DAG object; we'll need this to instantiate a DAG
-from airflow import DAG
-# Operators; we need this to operate!
-from airflow.operators.bash_operator import BashOperator
-from airflow.utils.dates import days_ago
-# These args will get passed on to each operator
-# You can override them on a per-task basis during operator initialization
+
 default_args = {
     'owner': 'shaojun',
     'depends_on_past': False,
@@ -22,7 +11,6 @@ default_args = {
     'email_on_retry': False,
     'retries': 1,
     'retry_delay': timedelta(minutes=1),
-    # daily
     # 'queue': 'bash_queue',
     # 'pool': 'backfill',
     # 'priority_weight': 10,
@@ -40,23 +28,26 @@ default_args = {
 
 # running pipelines
 dag = DAG(
-    'mobile',
+    'mobile_COVID_tracker',
     default_args=default_args,
     description='Running pipline for ELT',
     #schedule_interval=timedelta(days=1),
     schedule_interval= '@once',
 )
 
-# Operators
-t0 = BashOperator(
-    task_id='print_date',
-    bash_command='cd ~/Projects/COVID19',
+# start command
+t_start = BashOperator(
+    task_id='running_start',
+    bash_command='echo Running Start! Time: $(date +"%T")',
+    priority_weight = 100, # this is main pipeline
     dag=dag,
 )
+
 t1 = BashOperator(
     task_id='data_ingest',
     depends_on_past=False,
     bash_command='python /Users/shaojun/Projects/COVID19/src/data_ingestion.py',
+    priority_weight = 100, # this is main pipeline
     retries=1,
     dag=dag,
 )
@@ -64,20 +55,43 @@ t2 = BashOperator(
     task_id='patient_track',
     depends_on_past=False, # run anyway if ingestion failed
     bash_command='python /Users/shaojun/Projects/COVID19/src/track_patient.py',
-    retries=2,
+    priority_weight = 100, # this is main pipeline
+    retries=1,
     dag=dag,
 )
 t3 = BashOperator(
     task_id='close_contact_track',
     depends_on_past=True, # must depend on patient_track to complete
     bash_command='python /Users/shaojun/Projects/COVID19/src/track_close_contact.py',
-    retries=2,
+    retries = 1,
+    priority_weight = 100, # this is main pipeline
+    dag=dag,
+)
+
+t3_1 = BashOperator(
+    task_id='contact_between_patient',
+    depends_on_past=True, # must depend on upstream to complete
+    bash_command='python /Users/shaojun/Projects/COVID19/src/track_patient_contact.py',
+    retries = 0,
+    priority_weight = 1, # not very important execute after main pipeline
+    dag=dag,
+)
+
+# End Command
+t_end = BashOperator(
+    task_id='running_end',
+    bash_command='echo Running Start! Time: $(date +"%T")',
+    priority_weight = 100, # this is main pipeline
     dag=dag,
 )
 
 # main running pipline
-dag >> t0 >> t1 >> t2 >> t3
+dag >> t_start >> t1 >> t2 >> t3 >> t_end
 
+# branch pipeline for parameter calculation
+t3_1.set_upstream(t3)
+
+# dag docs listed here
 dag.doc_md = __doc__
 
 t1.doc_md = """\
