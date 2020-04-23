@@ -1,0 +1,55 @@
+# elasticsearch config parameters
+elasticsearch:
+    host: "http://localhost"
+    port: "9200"
+    thread: 10
+    
+# ontology for step 0: data ingestion
+ingestion:
+    # in staging version. Data is using Matteo's extracted data in 222 machine. 
+    input.folder: "/Users/shaojun/Projects/COVID19/mobile_net"
+    mode: "skip"
+
+
+# parameter for step 1: track infected person
+track.person:
+    # this is the running parameter of all the 
+    person.type: "patient.apr22" # which subset we choose 
+    day.before: 14 # track days before infected
+    day.after: 14  # track days after infected
+    timezone: 'America/Fortaleza'
+
+# parameter for step 2: check close contact
+track.close_contact:
+    distance.minimum: "8.0m"
+    minute.before: 0
+    minute.after: 15
+    timezone: 'America/Fortaleza'
+
+# ===========  List the pipline file of every patient resources ================
+
+patient.higor:
+    input.file: "/Users/shaojun/Projects/COVID19/patient_input/list_of_infected.csv" # read infected people
+    folders:  
+        track: "/Users/shaojun/Projects/COVID19/patient_track"                # step1 output of patient track
+        close_contact: "/Users/shaojun/Projects/COVID19/close_contact"   # step2 output patient to all contact
+        result: "/Users/shaojun/Projects/COVID19/result"    # result folder: 1. summary stats of close contact
+                            #                2. patient to patient contact
+                            #                3. summary of patient to patient contact
+
+patient.apr13:
+    input.file: "/Users/shaojun/Projects/COVID19/patient_input/Association_Apri_13_20m_0.75.csv" # read infected people
+    folders:  
+        track: "/Users/shaojun/Projects/COVID19/patient_track"                
+        close_contact: "/Users/shaojun/Projects/COVID19/close_contact"  
+        result: "/Users/shaojun/Projects/COVID19/result" 
+
+patient.apr22:
+    input.file: "/Users/shaojun/Projects/COVID19/patient_input/infected_list_new.csv"
+    folders:  
+        track: "/Users/shaojun/Projects/COVID19/patient_track"                # step1 output of patient track
+        close_contact: "/Users/shaojun/Projects/COVID19/close_contact" # step2 output patient to all contact
+        # result folder: 1. summary stats of close contact
+        #                2. patient to patient contact
+        #                3. summary of patient to patient contact
+        result: "/Users/shaojun/Projects/COVID19/result" 

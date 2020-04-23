@@ -1,0 +1,35 @@
+# ontology of elasticsearch
+# this is the basic ontology for all output
+# DO NOT change it
+elasticsearch:
+  id: "mobileId"
+  time: "acquisitionTime"
+  location: "location"
+  moving_rate: "movingRate"
+
+# input ontology map for ingestion
+ingestion:
+  id: "id"
+  time: "datastamp"
+  latitude: "lat"
+  longitude: "long"
+
+# input ontology map for tracking person
+track.person:
+  patient.higor:
+    date: "sympton_date"
+    id:   "infected_uid"
+    timezone: 'America/Fortaleza'
+
+  patient.apr13:
+    date: "date"
+    id: "Mobile_id"
+    timezone: 'America/Fortaleza'
+
+  patient.apr22:
+    date: 'date'
+    id: "Mobile_id"
+    status: "dead" 
+    flag.dead: "OBITO"
+    timezone: 'America/Fortaleza'
+    
