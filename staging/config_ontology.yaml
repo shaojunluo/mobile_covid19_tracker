@@ -9,27 +9,27 @@ elasticsearch:
 
 # input ontology map for ingestion
 ingestion:
-  id: "id"
-  time: "datastamp"
-  latitude: "lat"
-  longitude: "long"
+  app:
+    id: "id"
+    time: "datastamp"
+    latitude: "lat"
+    longitude: "long"
+  grandata:
+    id: "id"
+    time: "datastamp"
+    latitude: "lat"
+    longitude: "long"
 
 # input ontology map for tracking person
 track.person:
-  patient.higor:
-    date: "sympton_date"
-    id:   "infected_uid"
-    timezone: 'America/Fortaleza'
-
-  patient.apr13:
-    date: "date"
-    id: "Mobile_id"
-    timezone: 'America/Fortaleza'
-
-  patient.apr22:
+  patients:
     date: 'date'
     id: "Mobile_id"
     status: "dead" 
     flag.dead: "OBITO"
     timezone: 'America/Fortaleza'
     
+  1st_layer:
+    date: 'infectedTime'
+    id: 'targetId'
+    timezone: 'America/Fortaleza'

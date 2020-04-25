@@ -1,5 +1,4 @@
 import yaml
-from glob import glob
 import os
 import sys
 from functools import partial
@@ -9,6 +8,7 @@ from multiprocessing import Pool
 sys.path.append(os.path.dirname(__file__) + '/..')
 # read the relavant libaries
 import lib.lib_close_contact as utils
+import lib.lib_model as model_utils
 
 # read parameter of the step
 with open(os.path.dirname(__file__) + '/../config_params.yaml', 'r') as stream:
@@ -20,27 +20,31 @@ with open(os.path.dirname(__file__) + '/../config_params.yaml', 'r') as stream:
     PORT = params['elasticsearch']['port']
     # I/O settings
     input_folder = params[person_type]['folders']['track']
-    output_folder = params[person_type]['folders']['close_contact']
-    result_folder = params[person_type]['folders']['result']
+    output_folder = params[person_type]['folders']['contact']
+    result_folder = params[person_type]['folders']['contact.profile']
+    deliver_folder = params[person_type]['folders']['deliver']
     # query parameters
-    m_before = params['track.close_contact']['minute.before']
-    m_after =  params['track.close_contact']['minute.after']
-    min_d =    params['track.close_contact']['distance.minimum']
+    m_before = params['track.contact']['minute.before']
+    m_after =  params['track.contact']['minute.after']
+    max_d =    params['track.contact']['distance.max']
+    num_cores =params['track.contact']['num.cores']
 
 print(f'running query for "{person_type}"')
 # read files
-files = glob(input_folder + '/*.csv')
+files = model_utils.retrieve_active_patients(deliver_folder + '/active_patients.csv', person_type, input_folder)
 # Track the list of close contact
 func = partial(utils.track_close_contact, output_folder = output_folder, person_type = person_type, 
-                                          minutes_before = m_before, minutes_after = m_after, distance = min_d,
+                                          minutes_before = m_before, minutes_after = m_after, distance = max_d,
                                           host_url = HOST_URL, port = PORT, index_prefix = 'fortaleza_')
 
 # Parrellel processing patient to all 
-with Pool(11) as p:
+with Pool(num_cores) as p:
     dfs = list(p.map(func, files))
 
 # get the summary
-utils.close_contact_summary(dfs, result_folder)
-
+utils.close_contact_summary(dfs, deliver_folder)
+# update the new generated files
+files = model_utils.retrieve_active_patients(deliver_folder + '/active_patients.csv', person_type, output_folder)
 # shorten the list
-utils.shorten_close_contact(output_folder, result_folder +'/close_contact_stats.csv')
+utils.shorten_close_contact(files, result_folder)
+

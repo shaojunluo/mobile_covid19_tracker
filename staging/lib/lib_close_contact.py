@@ -3,6 +3,7 @@ import sys
 
 from collections import Counter
 from glob import glob
+from functools import partial
 from multiprocessing import Pool
 from time import time
 
@@ -33,7 +34,7 @@ def space_query(lat, lon, distance):
     body = {"must" : {"match_all":{}},
             "filter" : {
                 "geo_distance" : {
-                    "distance" : distance,
+                    "distance" : str(distance) + 'm',
                     "location" : [lat, lon]
                     }
                 }
@@ -42,7 +43,7 @@ def space_query(lat, lon, distance):
 
 # perform the combined queries (alow self query)
 # to disable self link, add "must_not" : {"term" : { "mobileId" : query_id }},
-def combine_queries(time_queries, space_queries, query_id, size):
+def combine_queries(time_queries, space_queries, query_id, size, only_self_link = False):
     body = {"size" : size,
             "query": {
                 "bool": {
@@ -156,42 +157,26 @@ def agg_close_contact_stats(x):
     return pd.Series(name, index=list(name.keys()))
 
 # transform records
-def extract_close_contact_stats(file_name):
-    df = pd.read_csv(file_name)
+def extract_close_contact_stats(file_name, output_folder):
+    try:
+        df = pd.read_csv(file_name)
+    except FileNotFoundError:  # if the file not exists (means no contact record)
+        return # early stop
     # get the contact stat
     df = df.groupby(['sourceRefId','sourceId','sourceTime','sourceLat',
                      'sourceLong','targetId']).apply(agg_close_contact_stats)
-    # drop the hierarchical column structure
-    #df.columns = df.columns.droplevel(0)
-    # reset_index
-    return df.reset_index()
-
-# concat all file results (support list of df or folder string)
-def concat_files(input_obj, order_key = None):
-    # if input is a folder
-    if type(input_obj) == str:
-        dfs = []
-        for file_ in glob(input_obj + '/*.csv'):
-            dfs.append(pd.read_csv(file_))
-    else:
-        dfs = input_obj
-    # concat list of dfs
-    df = pd.concat(dfs, axis = 0, ignore_index = True)
-    if order_key:
-        return df.sort_values(by = order_key)
-    else:
-        return df
+    # save to new files
+    df.reset_index().to_csv(output_folder + '/' + os.path.basename(file_name),index = False)
     
 # shorten close contact using statistics
-def shorten_close_contact(input_folder, output_file_name):
+def shorten_close_contact(files, output_folder):
     print(f'Shorten contacts...', end = ' ', flush = True)
+    if not os.path.exists(output_folder):
+        os.mkdir(output_folder)
     start_time = time()
-    files = glob(input_folder +'/*.csv')
     with Pool(12) as p:
-        dfs = list(p.map(extract_close_contact_stats, files))
-    # concat files and save
-    df = concat_files(dfs, order_key = ['sourceId','sourceTime','targetTime_min'])
-    df.to_csv(output_file_name, index = False)
+        func = partial(extract_close_contact_stats, output_folder = output_folder)
+        p.map(func, files)
     # output time
     print(f'Complete. Time lapsed: {(time() - start_time)/60 :.2f} min', flush = True)
 

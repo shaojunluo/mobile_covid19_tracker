@@ -43,9 +43,10 @@ def construct_index(index_name, host_url= 'http://localhost', port = 9200, mode 
     es_mapping = {
         "properties": { 
             "mobileId" :{"type":"keyword"},
+            "dataSource": {"type":"keyword"},
             "acquisitionTime" : {"type" : "date"},
             "location" : {"type" : "geo_point"},
-            "movingRate": {"type": "double"}
+            "movingRate": {"type": "double"},
         }
     }
     # connect to elastic search
@@ -110,16 +111,16 @@ def add_moving_rate(df, moving_rate_col, lat_col, lon_col, t_col, group_col = No
     return df_sorted
 
 # processing file for Elasticsearch
-def process_for_ES(file_):
+def process_for_ES(file_, data_source):
     # read MAPPING
-    id_col = MAPPING['ingestion']['id']
-    t_col = MAPPING['ingestion']['time'] 
-    lat_col = MAPPING['ingestion']['latitude']
-    long_col = MAPPING['ingestion']['longitude']
+    id_col = MAPPING['ingestion'][data_source]['id']
+    t_col = MAPPING['ingestion'][data_source]['time'] 
+    lat_col = MAPPING['ingestion'][data_source]['latitude']
+    long_col = MAPPING['ingestion'][data_source]['longitude']
     
     # processing dataframes
-    df = pd.read_csv(file_) # read file
-    df = df.set_index('Unnamed: 0') # reset index
+    df = pd.read_csv(file_)[[id_col,t_col, lat_col, long_col]]# read file
+    df['dataSource'] = data_source
     
     # create unique uid (must dedup to avoid hash collision)
     df['reference_id'] = df.apply(lambda row: hash_record(row),axis = 1)
@@ -136,10 +137,10 @@ def process_for_ES(file_):
     
     # final cleaning
     df = df.rename(columns = {id_col: 'mobileId', t_col: 'acquisitionTime'}) # rename columns
-    return df[['reference_id','mobileId', 'acquisitionTime', 'location','movingRate']] # return subset
+    return df[['reference_id','dataSource','mobileId','acquisitionTime','location','movingRate']] # return subset
 
-# read files to elasticsearch 
-def read_to_elastic(file_, host_url = 'http://localhost', port ='9200', n_thread = 1, mode = 'overwrite', prefix = ''):
+# read files to elasticsearch
+def read_to_elastic(file_, data_source, host_url = 'http://localhost', port ='9200', n_thread = 1, mode = 'overwrite', prefix = ''):
     start_time = time()
     # get index name
     index_name = get_index_name(file_, prefix = prefix)
@@ -149,7 +150,7 @@ def read_to_elastic(file_, host_url = 'http://localhost', port ='9200', n_thread
         print(f'Index {index_name} exist, skipped by rule')
         return index_name
     # covert dataframes
-    df = process_for_ES(file_)
+    df = process_for_ES(file_,data_source)
     # exporting to elastic search
     esp.es_write(df, index_name, uid_name = 'reference_id', geo_col_dict= None, thread_count = n_thread)
     # exporting

@@ -14,30 +14,59 @@ with open(os.path.dirname(__file__) + '/../config_params.yaml','r') as f:
     HOST_URL = params['elasticsearch']['host']
     PORT = params['elasticsearch']['port']
     n_thread = params['elasticsearch']['thread']
-    input_folder = params['ingestion']['input.folder']
-    mode = params['ingestion']['mode']
-
-files = glob(input_folder + '/*.csv') # fetch files
+    input_app = params['ingestion']['input.folder']['app']
+    input_grandata = params['ingestion']['input.folder']['grandata']
 
 ### ======================== Sequencial Processing ========================
 ### Best Run in local machine 
+print('ingesting App data')
+# ingest input of app first
+files = glob(input_app + '/*.csv') # fetch files
+# Ingest input of app
+index_list = [utils.read_to_elastic(file_, 'app',
+                                    host_url = HOST_URL, 
+                                    port = PORT, 
+                                    n_thread = n_thread,
+                                    mode = 'skip', # need to change in produtization
+                                    prefix = 'fortaleza_') for file_ in files]
 
-index_list = [utils.read_to_elastic(file_, host_url = HOST_URL, 
-                                        port = PORT, 
-                                        n_thread = n_thread,
-                                        mode = mode,
-                                        prefix = 'fortaleza_') for file_ in files]
+print('ingesting Pre-exist patient data')
+files = glob(input_grandata + '/*.csv') # fetch files
+# Ingest input of grandata
+index_list = [utils.read_to_elastic(file_, 'grandata',
+                                    host_url = HOST_URL, 
+                                    port = PORT, 
+                                    n_thread = n_thread,
+                                    mode = 'append', # use append
+                                    prefix = 'fortaleza_') for file_ in files]
     
 ### ======================== Parrellel Processing =========================
 ### use this if you have large machine and querying other server
 
-# # library for parallel computing
-# from functools import partial
-# from multiprocessing import Pool
-
 # # Put the worker to parallel
-# func = partial(utiles.read_to_elastic, host_url = HOST_URL, port = PORT, n_thread = 6,prefix = 'fortaleza_')
-# with Pool(4) as p:
+# func = partial(utils.read_to_elastic, data_source ='app',
+#                                       host_url = HOST_URL, 
+#                                       port = PORT, 
+#                                       n_thread = n_thread,
+#                                       mode = 'overwrite', # need to change in produtization
+#                                       prefix = 'fortaleza_')
+# # ingest app data
+# print('ingesting App data')
+# with Pool(6) as p: # use smaller size to avoid memory overflow
+#     files = glob(input_app + '/*.csv')
+#     index_list = list(p.map(func, files))
+    
+# # Put the worker to parallel
+# print('ingesting Pre-exist patient data')
+# func = partial(utils.read_to_elastic, data_source ='grandata',
+#                                       host_url = HOST_URL, 
+#                                       port = PORT, 
+#                                       n_thread = n_thread,
+#                                       mode = 'append', # append on previous result
+#                                       prefix = 'fortaleza_')
+# # input with grandata
+# with Pool(12) as p:
+#     files = glob(input_grandata + '/*.csv')
 #     index_list = list(p.map(func, files))
 
 ### update ingested list

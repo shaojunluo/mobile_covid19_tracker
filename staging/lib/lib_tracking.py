@@ -56,6 +56,7 @@ def build_track(es, row, output_folder = 'patient_track'):
     df =pd.DataFrame(records)                  # construct new dataframes
     if len(df) == 0:
         print(f"ID {row['mobileId']} out of scope, skip",flush = True)
+        return False
     else:
         # for output attach time zone
         df['acquisitionTime'] = pd.to_datetime(df['acquisitionTime'],utc=True).dt.tz_convert(row['time_zone'])
@@ -65,9 +66,11 @@ def build_track(es, row, output_folder = 'patient_track'):
         df = df.drop(columns = 'location')
         # save result
         df.to_csv(output_folder + '/' + row['mobileId'] +'.csv', index = False)
+        return True
 
 # processing the df for person to track
-def processing_track_df(input_file, person_type, days_before = 15, days_after = 15, prefix = ''):
+def processing_track_df(input_file, person_type, days_before = 15, days_after = 15,
+                        pivot_day = pd.Timestamp.today(), prefix = ''):
     # read MAPPING
     id_col = MAPPING['track.person'][person_type]['id']
     date_col = MAPPING['track.person'][person_type]['date']
@@ -81,11 +84,13 @@ def processing_track_df(input_file, person_type, days_before = 15, days_after = 
         dead_flag = MAPPING['track.person'][person_type]['flag.dead'] 
     else:
         stat_col = 'null_status'
-        df[stat_col] = True
+        df[stat_col] = False
         dead_flag = False
         
     df[date_col] = pd.to_datetime(df[date_col]) # in here because only day present, therefore we don't proceed with utc
-    # get the list of index we can query
+    if pivot_day is not None:
+        # filter the person with recent infection correspond to pivot_day, otherwise consider all.
+        df = df[df[date_col].dt.tz_localize(None) > pivot_day.tz_localize(None) - pd.Timedelta(days = days_after)]
     # get the available index
     with open(os.path.dirname(__file__) + '/../config_es_index.yaml','r') as stream:
         index_list = yaml.safe_load(stream)['index.ingested']
@@ -104,6 +109,16 @@ def track_persons(query_df, output_folder, host_url = 'http://localhost', port =
     print(f"Tracking: {len(query_df)} persons",flush = True)
     # tracking the trace of every person. Don't need any parallel becasue it is fast in general.
     es = Elasticsearch([host_url +':'+ port],timeout=600)
-    query_df.apply(lambda row: build_track(es, row, output_folder= output_folder), axis = 1)
+    query_df['has_track'] = query_df.apply(lambda row: build_track(es, row, output_folder= output_folder), axis = 1)
     es.transport.connection_pool.close()
-    print(f'Final available IDs: {len(glob(output_folder + "/*.csv"))}, Time Lapse {(time() - start_time)/60:.2f}min',flush = True)
+    print(f'Final trackable IDs: {query_df["has_track"].sum():.0f}, Time Lapse {(time() - start_time)/60:.2f}min',flush = True)
+    # return the final query df
+    return query_df.drop(columns =['index_list'])
+
+def save_active_list(active_patients, deliver_folder, person_type):
+    id_col = MAPPING['track.person'][person_type]['id']
+    active_patients = active_patients.rename(columns ={'mobileId':id_col}) # reverse ontoligy 
+    if not os.path.exists(deliver_folder):
+        os.mkdir(deliver_folder)
+    # save
+    active_patients.to_csv(deliver_folder +f'/active_{person_type}.csv',index =False)
