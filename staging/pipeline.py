@@ -9,7 +9,7 @@ from airflow.operators.bash_operator import BashOperator
 from airflow.operators.python_operator import BranchPythonOperator
 
 # put working directory here!
-with open(os.path.dirname(__file__) + '/config_ontology.yaml') as f:
+with open(os.path.dirname(__file__) + 'config_params.yaml') as f:
     params = yaml.safe_load(f)
     work_dir = params['working.directory']
     #work_dir = '/Users/shaojun/Projects/COVID19'
