@@ -1,3 +1,6 @@
+# working directory of the runing file
+working.directory: '/Users/shaojun/Projects/COVID19'
+
 # elasticsearch config parameters
 elasticsearch:
     host: "http://localhost"

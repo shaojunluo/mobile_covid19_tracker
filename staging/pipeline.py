@@ -8,6 +8,12 @@ from airflow.utils.dates import days_ago
 from airflow.operators.bash_operator import BashOperator
 from airflow.operators.python_operator import BranchPythonOperator
 
+# put working directory here!
+with open(os.path.dirname(__file__) + '/config_ontology.yaml') as f:
+    params = yaml.safe_load(f)
+    work_dir = params['working.directory']
+    #work_dir = '/Users/shaojun/Projects/COVID19'
+
 default_args = {
     'owner': 'shaojun',
     'depends_on_past': False,
@@ -39,7 +45,7 @@ t_start = BashOperator(
 t1 = BashOperator(
     task_id='data_ingest',
     depends_on_past=False,
-    bash_command='python /Users/shaojun/Projects/COVID19/src/data_ingestion.py',
+    bash_command=f'python {work_dir}/src/data_ingestion.py',
     priority_weight = 100, # this is main pipeline
     retries=1,
     dag=dag_main,
@@ -47,7 +53,7 @@ t1 = BashOperator(
 t2 = BashOperator(
     task_id='patient_track',
     depends_on_past=True, # run anyway if ingestion failed
-    bash_command='python /Users/shaojun/Projects/COVID19/src/track_patient.py',
+    bash_command=f'python {work_dir}/src/track_patient.py',
     priority_weight = 100, # this is main pipeline
     retries=1,
     dag=dag_main,
@@ -55,7 +61,7 @@ t2 = BashOperator(
 t3 = BashOperator(
     task_id='close_contact_track',
     depends_on_past=True, # must depend on patient_track to complete
-    bash_command='python /Users/shaojun/Projects/COVID19/src/track_close_contact.py',
+    bash_command=f'python {work_dir}/src/track_close_contact.py',
     retries = 1,
     priority_weight = 100, # this is main pipeline
     dag=dag_main,
@@ -64,7 +70,7 @@ t3 = BashOperator(
 t3_1 = BashOperator(
     task_id='contact_between_patient',
     depends_on_past=True, # must depend on upstream to complete
-    bash_command='python /Users/shaojun/Projects/COVID19/src/track_patient_contact.py',
+    bash_command=f'python {work_dir}/src/track_patient_contact.py',
     retries = 1,
     priority_weight = 1, # not very important execute after main pipeline
     dag=dag_main,
@@ -73,7 +79,7 @@ t3_1 = BashOperator(
 t4 = BashOperator(
     task_id='risky_contact',
     depends_on_past=True, # must depend on patient_track to complete
-    bash_command='python /Users/shaojun/Projects/COVID19/src/find_risky_contact.py',
+    bash_command= f'python {work_dir}/src/find_risky_contact.py',
     retries = 1,
     priority_weight = 100, # this is main pipeline
     dag=dag_main,
@@ -82,7 +88,7 @@ t4 = BashOperator(
 t5 = BashOperator(
     task_id='red_zone',
     depends_on_past=True, # must depend on patient_track to complete
-    bash_command='python /Users/shaojun/Projects/COVID19/src/find_red_zones.py',
+    bash_command= f'python {work_dir}/src/find_red_zones.py',
     retries = 1,
     priority_weight = 100, # this is main pipeline
     dag=dag_main,
@@ -91,7 +97,7 @@ t5 = BashOperator(
 wrap_up= BashOperator(
     task_id='wrap_up',
     depends_on_past=True, # must depend on patient_track to complete
-    bash_command='python /Users/shaojun/Projects/COVID19/src/update_run_time.py',
+    bash_command= f'python {work_dir}/src/update_run_time.py',
     retries = 1,
     priority_weight = 100, # this is main pipeline
     dag=dag_main,
