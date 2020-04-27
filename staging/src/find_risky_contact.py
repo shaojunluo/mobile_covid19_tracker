@@ -34,12 +34,11 @@ files = utils.retrieve_active_patients(output_folder +'/active_patients.csv', pe
 
 # assign probability
 with Pool(num_cores) as p:
-    func = partial(utils.probabilistic_model, output_folder = output_folder,_time = m_after, R = max_d,model='continuos')
+    func = partial(utils.probabilistic_model, output_folder = output_folder, _time = m_after, R = max_d,model='continuos')
     result = list(p.map(func, files))
 # final result delivery
-risky_contact = utils.deliver_risky_contact(result, files, output_folder, rho)
-
-# Find the first layer
-layer_1st = risky_contact[['targetId', 'infectedTime']].drop_duplicates()
-layer_1st.to_csv(output_folder + '/active_1st_layer.csv', index = False)
-
+risky_contact = utils.calculate_risky_contact(result, files, rho, patient_list = output_folder +'/active_patients.csv')
+# Find the first layer (including warmup points)
+utils.deliver_risky_person(risky_contact, output_folder + '/active_1st_layer.csv', subset = None)
+# deliver the risky person
+utils.deliver_risky_person(risky_contact, output_folder + '/risky_ids.csv', subset = 'app')

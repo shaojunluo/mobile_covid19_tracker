@@ -27,7 +27,9 @@ index_list = [utils.read_to_elastic(file_, 'app',
                                     host_url = HOST_URL, 
                                     port = PORT, 
                                     n_thread = n_thread,
-                                    mode = 'skip', # need to change in produtization
+                                    # default_mode: action to take if the index already exists. 
+                                    # valid value: skip, append, overwrite
+                                    mode = utils.ingestion_mode('app', default_mode = 'skip'), 
                                     prefix = 'fortaleza_') for file_ in files]
 
 print('ingesting Pre-exist patient data')
@@ -37,7 +39,7 @@ index_list = [utils.read_to_elastic(file_, 'grandata',
                                     host_url = HOST_URL, 
                                     port = PORT, 
                                     n_thread = n_thread,
-                                    mode = 'append', # use append
+                                    mode = utils.ingestion_mode('app', default_mode = 'append'),
                                     prefix = 'fortaleza_') for file_ in files]
     
 ### ======================== Parrellel Processing =========================
@@ -48,7 +50,7 @@ index_list = [utils.read_to_elastic(file_, 'grandata',
 #                                       host_url = HOST_URL, 
 #                                       port = PORT, 
 #                                       n_thread = n_thread,
-#                                       mode = 'overwrite', # need to change in produtization
+#                                       mode = utils.ingestion_mode('app', default_mode = 'skip'),
 #                                       prefix = 'fortaleza_')
 # # ingest app data
 # print('ingesting App data')
@@ -62,7 +64,7 @@ index_list = [utils.read_to_elastic(file_, 'grandata',
 #                                       host_url = HOST_URL, 
 #                                       port = PORT, 
 #                                       n_thread = n_thread,
-#                                       mode = 'append', # append on previous result
+#                                       mode = utils.ingestion_mode('app', default_mode = 'append'),
 #                                       prefix = 'fortaleza_')
 # # input with grandata
 # with Pool(12) as p:

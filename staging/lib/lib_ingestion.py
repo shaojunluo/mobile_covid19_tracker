@@ -19,6 +19,17 @@ with open(os.path.dirname(__file__) + '/../config_ontology.yaml','r') as f:
 
 ### ================================Utiles for data ingestion  =======================###
 
+# determine ingestion mode
+def ingestion_mode(data_source, default_mode = 'skip'):
+    with open(os.path.dirname(__file__) + '/../config_status.yaml') as f:
+        status = yaml.safe_load(f)
+        t_data = status['last.update'][f'data.{data_source}']
+        t_run = status['last.run']
+        if pd.Timestamp(t_data) < pd.Timestamp(t_run):
+            return 'skip'
+        else:
+            return default_mode
+            
 # create hash id
 def hash_record(row):
     hash_str = ''
@@ -35,11 +46,11 @@ def construct_index(index_name, host_url= 'http://localhost', port = 9200, mode 
     # this is use to create request body
     settings = {
         "settings" : {
-            "number_of_shards": 5,
+            "number_of_shards": 1,
             "number_of_replicas": 0
         }
     }
-
+    # mapping of index
     es_mapping = {
         "properties": { 
             "mobileId" :{"type":"keyword"},

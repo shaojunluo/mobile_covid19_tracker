@@ -7,9 +7,9 @@ elasticsearch:
     port: "9200"
     thread: 12
     
-# ontology for step 0: data ingestion
+# Parameter for data ingestion
 ingestion:
-    # in staging version. Data is using Matteo's extracted data in 222 machine. 
+    # two data resources app and grandata for calculation, specify their location
     input.folder: 
         app: "/Users/shaojun/Projects/COVID19/mobile_net_app"
         grandata: "/Users/shaojun/Projects/COVID19/mobile_net_grandata"
@@ -20,20 +20,21 @@ track.person:
     person.type: "patients" # which subset we choose 
     day.before: 14 # track days before infected
     day.after: 14  # track days after infected
-    timezone: 'America/Fortaleza'
-    num.cores: 12
+    lookup.day: "2020-03-31" # the day you stand to generate the past track ("none" for all, "today" for today, or "yyyy-mm-dd")
+    timezone: 'America/Fortaleza' # time zone of day
+    num.cores: 11 # cores for run the tacking
 
 # parameter for step 2: check close contact
 track.contact:
-    distance.max: 8
-    minute.before: 0
-    minute.after: 15
+    distance.max: 8 # diamiter ds, unit in meters
+    minute.before: 0 # track how many minutes before
+    minute.after: 15 # track how many minutes after 
     timezone: 'America/Fortaleza'
-    num.cores: 11
+    num.cores: 11 # cores for run the tacking
 
 # parameter for contact model
 contact.model:
-    rho: 0.14
+    rho: 0.14 # rho of contact model
 
 # ===========  List the pipline file of every patient resources ================
 

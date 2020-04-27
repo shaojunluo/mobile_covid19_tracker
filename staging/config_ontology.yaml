@@ -3,6 +3,7 @@
 # DO NOT change it
 elasticsearch:
   id: "mobileId"
+  source: "dataSource"
   time: "acquisitionTime"
   location: "location"
   moving_rate: "movingRate"
@@ -10,8 +11,8 @@ elasticsearch:
 # input ontology map for ingestion
 ingestion:
   app:
-    id: "id"
-    time: "datastamp"
+    id: "mobileId"
+    time: "acquisitionTime"
     latitude: "lat"
     longitude: "long"
   grandata:
@@ -23,13 +24,14 @@ ingestion:
 # input ontology map for tracking person
 track.person:
   patients:
-    date: 'date'
-    id: "Mobile_id"
-    status: "dead" 
+    time: 'date'
+    id: "mobileId"
+    status: "status" 
     flag.dead: "OBITO"
     timezone: 'America/Fortaleza'
     
   1st_layer:
-    date: 'infectedTime'
-    id: 'targetId'
+    time: 'earliestContactTime'
+    id: 'targetId'          # do not change
+    source: 'targetDataSrc' # do not change
     timezone: 'America/Fortaleza'

@@ -62,6 +62,7 @@ def generate_contact_record(hit, row):
     
     result['sourceRefId'] = row['reference_id']
     result['sourceId'] = row['mobileId']
+    result['sourceDataSrc'] = row['dataSource']
     result['sourceTime'] = row['acquisitionTime']
     result['sourceLat'] = row['lat']
     result['sourceLong'] = row['long']
@@ -69,6 +70,7 @@ def generate_contact_record(hit, row):
     
     result['targetRefId'] = hit['_id']
     result['targetId'] = hit['_source']['mobileId']
+    result['targetDataSrc'] = hit['_source']['dataSource']
     result['targetTime'] = hit['_source']['acquisitionTime']
     result['targetLat'] = hit['_source']['location'][0]
     result['targetLong'] = hit['_source']['location'][1]
@@ -163,8 +165,8 @@ def extract_close_contact_stats(file_name, output_folder):
     except FileNotFoundError:  # if the file not exists (means no contact record)
         return # early stop
     # get the contact stat
-    df = df.groupby(['sourceRefId','sourceId','sourceTime','sourceLat',
-                     'sourceLong','targetId']).apply(agg_close_contact_stats)
+    df = df.groupby(['sourceRefId','sourceId','sourceDataSrc','sourceTime','sourceLat',
+                     'sourceLong','targetId','targetDataSrc']).apply(agg_close_contact_stats)
     # save to new files
     df.reset_index().to_csv(output_folder + '/' + os.path.basename(file_name),index = False)
     
