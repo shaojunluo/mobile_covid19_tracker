@@ -1,7 +1,6 @@
 import yaml
 import os
 import sys
-import pandas as pd
 # add the directory
 sys.path.append(os.path.dirname(__file__) + '/..')
 # read the relavant libaries
@@ -24,8 +23,8 @@ with open(os.path.dirname(__file__) + '/../config_params.yaml','r') as f:
     person_type = '1st_layer' # specify the person you track
     n_core = params['track.person']['num.cores']
     # now the input file is the risky contacts
-    patient_file = params[patient_type]['folders']['deliver'] +'/active_patients.csv'
-    contact_file = params[patient_type]['folders']['deliver'] +'/active_1st_layer.csv'
+    patient_file = params[patient_type]['folders']['deliver'] +f'/active_{patient_type}.csv'
+    contact_file = params[patient_type]['folders']['deliver'] +f'/active_{person_type}.csv'
     patient_folder = params[patient_type]['folders']['track']
     contact_folder = params[patient_type]['folders']['track.contact']
     deliver_folder = params[patient_type]['folders']['deliver']
@@ -47,9 +46,10 @@ utils.save_active_list(active_contact, deliver_folder, person_type)
 print('Running for layer 0 red zones', end = ' ')
 # get the final list of layer 0 redzone
 df_patient = model_utils.detect_red_zones(patient_file, patient_type, patient_folder, R = R)
+df_patient.drop_duplicates().to_csv(deliver_folder + '/red_zones_layer_0.csv', index = False)
+
 print('Running for layer 1 red zones', end = ' ')
 # get the final list of layer 1 redzone
 df_contact = model_utils.detect_red_zones(contact_file, person_type, contact_folder, R = R)
-# save the final result
-pd.concat([df_patient, df_contact]).drop_duplicates().to_csv(deliver_folder + '/red_zones.csv', index = False)
+df_contact.drop_duplicates().to_csv(deliver_folder + '/red_zones_layer_1.csv', index = False)
 

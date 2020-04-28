@@ -31,7 +31,7 @@ with open(os.path.dirname(__file__) + '/../config_params.yaml', 'r') as stream:
 
 print(f'running query for "{person_type}"')
 # read files
-files = model_utils.retrieve_active_patients(deliver_folder + '/active_patients.csv', person_type, input_folder)
+files = model_utils.retrieve_active_patients(deliver_folder + f'/active_{person_type}.csv', person_type, input_folder)
 # Track the list of close contact
 func = partial(utils.track_close_contact, output_folder = output_folder, person_type = person_type, 
                                           minutes_before = m_before, minutes_after = m_after, distance = max_d,
@@ -44,7 +44,7 @@ with Pool(num_cores) as p:
 # get the summary
 utils.close_contact_summary(dfs, deliver_folder)
 # update the new generated files
-files = model_utils.retrieve_active_patients(deliver_folder + '/active_patients.csv', person_type, output_folder)
+files = model_utils.retrieve_active_patients(deliver_folder + f'/active_{person_type}.csv', person_type, output_folder)
 # shorten the list
 utils.shorten_close_contact(files, result_folder)
 

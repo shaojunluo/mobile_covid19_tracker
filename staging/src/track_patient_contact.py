@@ -17,12 +17,13 @@ with open(os.path.dirname(__file__) + '/../config_params.yaml','r') as f:
     result_folder = params[person_type]['folders']['deliver']
     num_cores = params['track.contact']['num.cores']
 
-query_files = glob(input_folder + '/*.csv') # read the files 
+# read the files according to the files (here we use all patients)
+#query_files = utils.retrieve_active_patients(input_file, person_type, input_folder)
 # get the subset of close contact patient
-df = utils.select_close_contact_subset(input_file, person_type,query_files, n_workers = num_cores)
+#df = utils.select_close_contact_subset(input_file, person_type,query_files, n_workers = num_cores)
 # df.save 
-df.to_csv(result_folder + '/contact_patient_to_patient.csv',index = False)
+#df.to_csv(result_folder + '/contact_patient_to_patient.csv',index = False)
 
 # count contacts
-hit_network = df.groupby(['sourceId','targetId']).size().reset_index().rename(columns ={0:'hit'})
-hit_network.to_csv(result_folder  +'/contact_patient_to_patient_summary.csv', index = False)
+#hit_network = df.groupby(['sourceId','targetId']).size().reset_index().rename(columns ={0:'hit'})
+#hit_network.to_csv(result_folder  +'/contact_patient_to_patient_summary.csv', index = False)

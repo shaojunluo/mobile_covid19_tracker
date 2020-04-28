@@ -29,7 +29,14 @@ track.person:
     status: "status" 
     flag.dead: "OBITO"
     timezone: 'America/Fortaleza'
-    
+
+  risky_ids:
+    time: 'earliestContactTime'
+    id: 'targetId'
+    source: 'targetDataSrc' # do not change
+    timezone: 'America/Fortaleza' 
+  
+  # this is for the standard template for 1st layer file do not change
   1st_layer:
     time: 'earliestContactTime'
     id: 'targetId'          # do not change

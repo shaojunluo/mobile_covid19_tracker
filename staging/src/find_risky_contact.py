@@ -30,14 +30,17 @@ with open(os.path.dirname(__file__) + '/../config_params.yaml','r') as f:
     num_cores =params['track.contact']['num.cores']
 
 # get the list of files for execute
-files = utils.retrieve_active_patients(output_folder +'/active_patients.csv', person_type, input_folder)
+files = utils.retrieve_active_patients(output_folder +f'/active_{person_type}.csv', person_type, input_folder)
 
 # assign probability
 with Pool(num_cores) as p:
-    func = partial(utils.probabilistic_model, output_folder = output_folder, _time = m_after, R = max_d,model='continuos')
+    func = partial(utils.probabilistic_model, _time = m_after, R = max_d,model='continuos')
     result = list(p.map(func, files))
+
 # final result delivery
-risky_contact = utils.calculate_risky_contact(result, files, rho, patient_list = output_folder +'/active_patients.csv')
+risky_contact = utils.calculate_risky_contact(result, files, rho, person_type, 
+                                              patient_list = output_folder + f'/active_{person_type}.csv', 
+                                              output_folder = output_folder)
 # Find the first layer (including warmup points)
 utils.deliver_risky_person(risky_contact, output_folder + '/active_1st_layer.csv', subset = None)
 # deliver the risky person

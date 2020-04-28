@@ -17,12 +17,13 @@ with open(os.path.dirname(__file__) + '/config_params.yaml') as f:
 default_args = {
     'owner': 'shaojun',
     'depends_on_past': False,
-    'start_date': days_ago(0,hour = 1), # time in utc
+    'start_date': datetime.now(), # time in utc
     'email': ['sjlocke.1989@gmail.com'],
     'email_on_failure': False,
     'email_on_retry': False,
     'retries': 2,
-    'retry_delay': timedelta(minutes=3)
+    'retry_delay': timedelta(minutes=3),
+    'max_threads':8
 }
 
 dag_main = DAG(
@@ -75,48 +76,42 @@ check = BashOperator(
 # ======================Start of Main Pipeline ================#
 t1 = BashOperator(
     task_id='data_ingest',
-    depends_on_past=False,
     bash_command=f'python {work_dir}/src/data_ingestion.py',
     dag=dag_main,
 )
 
 t2 = BashOperator(
     task_id='patient_track',
-    depends_on_past=True, # run anyway if ingestion failed
     bash_command=f'python {work_dir}/src/track_patient.py',
     dag=dag_main,
 )
 t3 = BashOperator(
     task_id='close_contact_track',
-    depends_on_past=True, # must depend on patient_track to complete
     bash_command=f'python {work_dir}/src/track_close_contact.py',
     dag=dag_main,
 )
 
-t3_1 = BashOperator(
-    task_id='contact_between_patient',
-    depends_on_past=True, # must depend on upstream to complete
-    bash_command=f'python {work_dir}/src/track_patient_contact.py',
-    dag=dag_main,
-)
+# t3_1 = BashOperator(
+#     task_id='contact_between_patient',
+#     depends_on_past=True, # must depend on upstream to complete
+#     bash_command=f'python {work_dir}/src/track_patient_contact.py',
+#     dag=dag_main,
+# )
 
 t4 = BashOperator(
     task_id='risky_contact',
-    depends_on_past=True, # must depend on patient_track to complete
     bash_command= f'python {work_dir}/src/find_risky_contact.py',
     dag=dag_main,
 )
 
 t5 = BashOperator(
     task_id='red_zone',
-    depends_on_past=True, # must depend on patient_track to complete
     bash_command= f'python {work_dir}/src/find_red_zones.py',
     dag=dag_main,
 )
 
 wrap_up= BashOperator(
     task_id='wrap_up',
-    depends_on_past=True, # must depend on patient_track to complete
     bash_command= f'python {work_dir}/src/update_run_time.py',
     dag=dag_main,
 )
@@ -131,7 +126,7 @@ t_end = BashOperator(
 )
 
 # Assemble main running pipline
-dag_main >> t_start >> monitor >> t1 >> t2 >> t3 >> t3_1 >> t4 >> t5 >> wrap_up >> t_end
+dag_main >> t_start >> monitor >> t1 >> t2 >> t3 >> t4 >> t5 >> wrap_up >> t_end
 # Branch if nothing to execute (no updates)
 monitor >> check >> t_end
 
