@@ -20,7 +20,7 @@ track.person:
     person.type: "patients" # which subset we choose 
     day.before: 14 # track days before infected
     day.after: 14  # track days after infected
-    lookup.day: "none" # the day you stand to generate the past track ("none" for all, "today" for today, or "yyyy-mm-dd")
+    lookup.day: "2020-03-31" # the day you stand to generate the past track ("none" for all, "today" for today, or "yyyy-mm-dd")
     timezone: 'America/Fortaleza' # time zone of day
     num.cores: 11 # cores for run the tacking
 
@@ -28,7 +28,12 @@ track.person:
 track.contact:
     distance.max: 8 # diamiter ds, unit in meters
     minute.before: 0 # track how many minutes before
-    minute.after: 15 # track how many minutes after 
+    minute.after: 15 # track how many minutes after
+    # Filtering rule when generating the close contact
+    # 0 to keep all records, including queries only have self contact
+    # 1 remove queries only return self-contact
+    # 2 for Matteo's rule have neighbor point(productization)
+    filter.rule: 2
     timezone: 'America/Fortaleza'
     num.cores: 11 # cores for run the tacking
 

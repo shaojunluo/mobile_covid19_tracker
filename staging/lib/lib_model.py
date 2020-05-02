@@ -215,7 +215,11 @@ def detect_red_zones(contact_file, person_type, input_folder, R = 8):
 # join close contact table one by one
 def filter_close_contact(file_, patient_list, id_col):
     print(f'joining: {file_}')
-    df = pd.read_csv(file_)
+    try:
+        df = pd.read_csv(file_)
+    except FileNotFoundError:
+        print(f'{os.path.basename(file_)} have no contact, skip')
+        return pd.DataFrame()
     # select patient subset
     df = df.merge(patient_list[id_col], left_on = 'targetId', right_on = id_col,how = 'inner')
     df = df.drop(columns = [id_col])

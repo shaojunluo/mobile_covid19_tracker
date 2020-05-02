@@ -24,6 +24,7 @@ with open(os.path.dirname(__file__) + '/../config_params.yaml', 'r') as stream:
     result_folder = params[person_type]['folders']['contact.profile']
     deliver_folder = params[person_type]['folders']['deliver']
     # query parameters
+    filter_rule = params['track.contact']['filter.rule']
     m_before = params['track.contact']['minute.before']
     m_after =  params['track.contact']['minute.after']
     max_d =    params['track.contact']['distance.max']
@@ -33,7 +34,7 @@ print(f'running query for "{person_type}"')
 # read files
 files = model_utils.retrieve_active_patients(deliver_folder + f'/active_{person_type}.csv', person_type, input_folder)
 # Track the list of close contact
-func = partial(utils.track_close_contact, output_folder = output_folder, person_type = person_type, 
+func = partial(utils.track_close_contact, output_folder = output_folder, person_type = person_type, filtering = filter_rule, 
                                           minutes_before = m_before, minutes_after = m_after, distance = max_d,
                                           host_url = HOST_URL, port = PORT, index_prefix = 'fortaleza_')
 

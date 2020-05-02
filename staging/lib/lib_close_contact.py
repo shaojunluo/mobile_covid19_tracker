@@ -79,28 +79,43 @@ def generate_contact_record(hit, row):
     return result
 
 # check existence of singleton
-def remove_singleton(result, row):
-    # count the list of ids
-    id_list = [hit['_source']['mobileId'] for hit in result['hits']['hits']]
-    id_counter = Counter(id_list)
-    # Consider only the point with self record nearby & shows more than twice
-    if (len(id_counter) < 2) | (id_counter[row['mobileId']] < 2):
-        records = [] # discard singleton, return empty reult
+def remove_singleton(result, row, filtering):
+    # keep all record
+    if filtering == 0:
+        records = [generate_contact_record(hit, row) for hit in result['hits']['hits']]
+    # remove the record only of self contact
+    elif filtering == 1:
+        # get the unique ids
+        id_set = set([hit['_source']['mobileId'] for hit in result['hits']['hits']])
+        if (len(id_set) < 2):  # If only self record then skip
+            return []
+        else:
+            records = [generate_contact_record(hit, row) for hit in result['hits']['hits']]
+    # only keep the record with trackable data (Matteo's version)
+    elif filtering == 2:
+         # count the list of ids
+        id_list = [hit['_source']['mobileId'] for hit in result['hits']['hits']]
+        id_counter = Counter(id_list)
+        # Consider only the point with self record nearby & shows more than twice
+        if (len(id_counter) < 2) | (id_counter[row['mobileId']] < 2):
+            records = [] # discard singleton, return empty reult
+        else:
+            # generate valid records
+            records = [generate_contact_record(hit, row) for hit in result['hits']['hits'] \
+                        if id_counter[hit['_source']['mobileId']] > 1] 
     else:
-        # generate valid records
-        records = [generate_contact_record(hit, row) for hit in result['hits']['hits'] \
-                   if id_counter[hit['_source']['mobileId']] > 1] 
+        raise ValueError("invalid filtering rule: must be 0,1 or 2")
     return records
 
 # get close contact of 1 point
-def get_close_contact(es, row, d = '10m', index_prefix = ''):
+def get_close_contact(es, row, d = '10m', index_prefix = '', filtering = 2):
     index_name = index_prefix + row['acquisitionTime'].strftime('%m_%d').lower() # get the index time to query!
     time_queries = time_query(row['startTime'], row['endTime'] ) # prepare time query
     space_queries = space_query(row['lat'], row['long'], distance = d) # prepare space query
     body = combine_queries(time_queries, space_queries, row['mobileId'], size = 10000) # combine queries
     result = es.search(index = index_name, body = body) # query
     # check single tons from results
-    return remove_singleton(result, row)
+    return remove_singleton(result, row, filtering)
 
 # generate summary file 
 def summary_close_contact(df):
@@ -112,7 +127,7 @@ def summary_close_contact(df):
 
 # track close contact for one patient and output to files
 def track_close_contact(file_, person_type, output_folder, minutes_before = 3, minutes_after = 3, distance = '10m',
-                        host_url = 'http://localhost', port = '9200', index_prefix = ''):
+                        filtering = 2, host_url = 'http://localhost', port = '9200', index_prefix = ''):
     start_time = time()
     # create dir if not exist
     if not os.path.exists(output_folder):
@@ -126,7 +141,7 @@ def track_close_contact(file_, person_type, output_folder, minutes_before = 3, m
     df['startTime'] = (df['acquisitionTime'] - pd.Timedelta(minutes = minutes_before)).dt.strftime('%Y-%m-%dT%H:%M:%S')
     df['endTime'] = (df['acquisitionTime'] + pd.Timedelta(minutes = minutes_after)).dt.strftime('%Y-%m-%dT%H:%M:%S')
     # apply to every row and then concat to final close contact table
-    close_contact = pd.DataFrame(df.apply(lambda row: get_close_contact(es, row, d = distance, 
+    close_contact = pd.DataFrame(df.apply(lambda row: get_close_contact(es, row, d = distance, filtering = filtering,
                                                                         index_prefix = index_prefix),axis = 1).sum())
     # safely close connection
     es.transport.connection_pool.close()
