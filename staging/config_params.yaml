@@ -1,4 +1,4 @@
-# working directory of the runing file
+# working directory of the pipeline file
 working.directory: '/Users/shaojun/Projects/COVID19'
 
 # elasticsearch config parameters
@@ -11,16 +11,16 @@ elasticsearch:
 ingestion:
     # two data resources app and grandata for calculation, specify their location
     input.folder: 
-        app: "/Users/shaojun/Projects/COVID19/data/app"
-        grandata: "/Users/shaojun/Projects/COVID19/data/grandata"
+        app: "/Users/shaojun/Projects/COVID19/data/mobile_net_app"
+        grandata: "/Users/shaojun/Projects/COVID19/data/mobile_net_grandata"
 
 # parameter for step 1: track infected person
 track.person:
     # this is the running parameter of all the 
-    person.type: "patients" # which subset we choose 
+    person.type: "levels" # which subset we choose 
     day.before: 14 # track days before infected
-    day.after: 14  # track days after infected
-    lookup.day: "2020-03-31" # the day you stand to generate the past track ("none" for all, "today" for today, or "yyyy-mm-dd")
+    day.after: 7   # track days after infected
+    lookup.day: "none" # the day you stand to generate the past track ("none" for all, "today" for today, or "yyyy-mm-dd")
     timezone: 'America/Fortaleza' # time zone of day
     num.cores: 11 # cores for run the tacking
 
@@ -28,7 +28,7 @@ track.person:
 track.contact:
     distance.max: 8 # diamiter ds, unit in meters
     minute.before: 0 # track how many minutes before
-    minute.after: 15 # track how many minutes after
+    minute.after: 30 # track how many minutes after
     # Filtering rule when generating the close contact
     # 0 to keep all records, including queries only have self contact
     # 1 remove queries only return self-contact
@@ -39,24 +39,24 @@ track.contact:
 
 # parameter for contact model
 contact.model:
-    rho: 0.14 # rho of contact model
+    rho: 0.9 # rho of contact model
 
 # ===========  List the pipline file of every patient resources ================
 
 patients:
-    input.file: "/Users/shaojun/Projects/COVID19/patient_input/infected_list.csv"
+    input.file: "/Users/shaojun/Projects/COVID19/patient_input/FINAL_infected_list.csv"
     folders:  
         track: "/Users/shaojun/Projects/COVID19/patient_track"            # step 2 output of patient track
         contact: "/Users/shaojun/Projects/COVID19/close_contact"          # step 3.1 output patient to all contact
         contact.profile:  "/Users/shaojun/Projects/COVID19/contact_profile" # step 3.2 output shorten contact profiles
         track.contact: "/Users/shaojun/Projects/COVID19/contact_track"    # step 4 generate contacts
-        deliver: "/Users/shaojun/Projects/COVID19/deliver/origin"         # step 5 generate deliver result
+        deliver: "/Users/shaojun/Projects/COVID19/deliver/"         # step 5 generate deliver result
 
-risky_ids:
-    input.file: "/Users/shaojun/Projects/COVID19/deliver/origin/risky_ids.csv"
-    folders:  
+levels:
+    input.file: "/Users/shaojun/Projects/COVID19/patient_input/Filtered_association_May12.csv"
+    folders: 
         track: "/Users/shaojun/Projects/COVID19/patient_track"            
         contact: "/Users/shaojun/Projects/COVID19/close_contact"         
         contact.profile:  "/Users/shaojun/Projects/COVID19/contact_profile" 
-        track.contact: "/Users/shaojun/Projects/COVID19/contact_track"    
-        deliver: "/Users/shaojun/Projects/COVID19/deliver/risky_contact"           
+        track.contact: "/Users/shaojun/Projects/COVID19/contact_track"
+        deliver: "/Users/shaojun/Projects/COVID19/deliver/result_30" 

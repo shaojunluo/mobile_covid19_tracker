@@ -20,11 +20,15 @@ with open(os.path.dirname(__file__) + '/../config_ontology.yaml','r') as f:
 
 # get the index name to query
 # the following algorithm subject to change if the name of index use different way
-def get_query_index(sympton_date, index_list, days_before = 15, days_after = 15, status = True, prefix = ''):
+def get_query_index(sympton_date, index_list, days_before = 15, days_after = 15, status = True, dead_time = None, prefix = ''):
     # calculate date range
     day_start = sympton_date - pd.Timedelta(days = days_before)
-    # if the patient didn't make it, we stop tracking
-    day_end = sympton_date + int(status)*pd.Timedelta(days = days_after)
+    # if the patient didn't make it, we track until death
+    if dead_time != '':
+        day_end = pd.to_datetime(dead_time)
+    else:
+        day_end = sympton_date + int(status)*pd.Timedelta(days = days_after)
+    # get the day range of query
     day_range = pd.date_range(day_start,day_end)
     # return the index within range
     full_list = [prefix + day.strftime('%m_%d') for day in day_range]
@@ -81,19 +85,34 @@ def processing_track_df(input_file, person_type, days_before = 15, days_after = 
     id_col = MAPPING['track.person'][person_type]['id']
     date_col = MAPPING['track.person'][person_type]['time']
     time_zone = MAPPING['track.person'][person_type]['timezone'] # read time zone
-   
+    
     # processing
     df = pd.read_csv(input_file) # read file
     df = df.rename(columns ={id_col: 'mobileId'}) # align ontoligy
     if 'status' in MAPPING['track.person'][person_type].keys():
         stat_col = MAPPING['track.person'][person_type]['status']
-        dead_flag = MAPPING['track.person'][person_type]['flag.dead'] 
+        dead_flag = MAPPING['track.person'][person_type]['flag.dead']
+        dead_time = MAPPING['track.person'][person_type]['time.dead']
+        if stat_col not in df.columns: # if there is no 
+            df[stat_col] = '' #null status
+        if dead_time not in df.columns:
+            df[dead_time] = '' 
+        df[stat_col] =  df[stat_col].fillna('')
+        df[dead_time] = df[dead_time].fillna('')
     else:
         stat_col = 'isDead'
+        dead_time = 'dead_time'
         df[stat_col] = False
+        df[dead_time] = ''
         dead_flag = True
         
     df[date_col] = pd.to_datetime(df[date_col]) # in here because only day present, therefore we don't proceed with utc
+    # clean duplication and keep the earlist record
+    df_distinct = df.groupby('mobileId')[date_col].min().reset_index()
+    print(df_distinct)
+    # only get the df with earliest record
+    df = df.merge(df_distinct, on = ['mobileId',date_col], how = 'inner')
+    print(len(df))
     # determine and filter by lookup day
     if lookup_day == 'today':
         lookup_day = pd.Timestamp.today()
@@ -115,6 +134,7 @@ def processing_track_df(input_file, person_type, days_before = 15, days_after = 
     func = lambda x: get_query_index(x[date_col],index_list, days_before= days_before, 
                                                              days_after= days_after,
                                                              status = x[stat_col]!=dead_flag,
+                                                             dead_time= x[dead_time],
                                                              prefix = prefix)
     df['index_list'] = df.apply(func, axis = 1)
     df['time_zone'] = time_zone
@@ -136,10 +156,14 @@ def track_persons(query_df, output_folder, host_url = 'http://localhost', port =
     return query_df.drop(columns = 'index_list')
 
 # save the active patients into file
-def save_active_list(active_patients, deliver_folder, person_type):
+def save_active_list(active_patients, deliver_folder, person_type, file_name = None):
     id_col = MAPPING['track.person'][person_type]['id']
-    active_patients = active_patients.rename(columns ={'mobileId':id_col}) # reverse ontoligy 
+    active_patients = active_patients.rename(columns ={'mobileId':id_col}) # reverse ontoligy
     if not os.path.exists(deliver_folder):
         os.mkdir(deliver_folder)
     # save
-    active_patients.to_csv(deliver_folder +f'/active_{person_type}.csv',index =False)
+    if file_name:
+        active_patients.to_csv(deliver_folder + '/' + file_name + '.csv',index =False)
+    else:
+        active_patients.to_csv(deliver_folder +f'/active_{person_type}.csv',index =False)
+    return active_patients

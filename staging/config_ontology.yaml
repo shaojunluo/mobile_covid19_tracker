@@ -24,21 +24,27 @@ ingestion:
 # input ontology map for tracking person
 track.person:
   patients:
-    time: 'date'
-    id: "mobileId"
+    time: 'sympton_date'
+    id: "mobile_ID"
     status: "status" 
     flag.dead: "OBITO"
+    time.dead: "date_obito"
+    timezone: 'America/Fortaleza'
+  
+  # this is for the standard template for 1st layer file
+  # DO NOT change
+  1st_layer:
+    time: 'sourceTime'
+    id: 'targetId'          
+    source: 'targetDataSrc' 
     timezone: 'America/Fortaleza'
 
-  risky_ids:
-    time: 'earliestContactTime'
-    id: 'targetId'
+  # this is for research
+  levels:
+    time: 'sourceTime'
+    id: 'targetId'          # do not change          
     source: 'targetDataSrc' # do not change
-    timezone: 'America/Fortaleza' 
-  
-  # this is for the standard template for 1st layer file do not change
-  1st_layer:
-    time: 'earliestContactTime'
-    id: 'targetId'          # do not change
-    source: 'targetDataSrc' # do not change
+    status: "status" 
+    flag.dead: "OBITO"
+    time.dead: "date_obito"
     timezone: 'America/Fortaleza'

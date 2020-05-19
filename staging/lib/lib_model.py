@@ -60,6 +60,7 @@ def p_x(row, R):
                             (row['targetLat_avg'],row['targetLong_avg'])).km*1000)
     return 1-(distance_m/(R*2))
 
+# apply probalistic model
 def probabilistic_model(_input,_time,R,model='continuos'):
     # if there is no tracking
     try:
@@ -112,15 +113,14 @@ def recursive_p(data,rho):
     df = data.groupby(['sourceId','sourceDataSrc','targetId','targetDataSrc']).agg({'p':recursive,
                                                                           'sourceTime': min})
     # return only risky person
-    
     df =  df.reset_index().rename(columns = {'sourceTime': t_c})
     return df[df['p'] >= rho]
 
 # calculate risky contacts
-def calculate_risky_contact(result, files, rho, person_type, patient_list = None, output_folder = None):
-    # processing ricky person
-    risky_contact = concat_files(result)
+def calculate_risky_contact(risky_contact, files, rho, person_type,  patient_list = None, output_folder = None):
     if output_folder:
+        if not os.path.exists(output_folder):
+            os.mkdir(output_folder)
         risky_contact.drop_duplicates().to_csv(output_folder + '/risky_contacts.csv', index = False)
     # get the list of risky contact
     risky_contact = recursive_p(risky_contact, rho=rho)
@@ -213,26 +213,34 @@ def detect_red_zones(contact_file, person_type, input_folder, R = 8):
 ## ==================== Select subset of patient from close contact list ===================
 
 # join close contact table one by one
-def filter_close_contact(file_, patient_list, id_col):
+def filter_close_contact(file_, patient_list, id_col, how = 'inner'):
     print(f'joining: {file_}')
     try:
         df = pd.read_csv(file_)
     except FileNotFoundError:
         print(f'{os.path.basename(file_)} have no contact, skip')
         return pd.DataFrame()
-    # select patient subset
-    df = df.merge(patient_list[id_col], left_on = 'targetId', right_on = id_col,how = 'inner')
-    df = df.drop(columns = [id_col])
+    # select patient subset 
+    if how == 'comp': #(compliment)
+        df = df.merge(patient_list[id_col,'core'], left_on = 'targetId', right_on = id_col,how = 'left')
+        df = df[df['core'].isna()].drop(columns = ['core'])
+    else: # other mode
+        df = df.merge(patient_list[id_col], left_on = 'targetId', right_on = id_col,how = how)
+    # detach duplicate columns
+    if id_col != 'targetId':
+        df = df.drop(columns = [id_col])
     return df
 
 # get the close contact subsets
-def select_close_contact_subset(input_file, person_type, query_files, n_workers = 4):
-    patient_list = pd.read_csv(input_file) # read patient list
+def select_close_contact_subset(input_file, person_type, query_files, how = 'inner', n_workers = 4):
+    if type(input_file) == str:
+        patient_list = pd.read_csv(input_file) # read patient list
+    else:
+        patient_list = input_file
     id_col = MAPPING['track.person'][person_type]['id']
-    func = partial(filter_close_contact, patient_list = patient_list, id_col = id_col)
+    func = partial(filter_close_contact, patient_list = patient_list, id_col = id_col, how = how)
     # usin parallel for processing
     with Pool(n_workers) as p:
         dfs = list(p.map(func, query_files))
     df = pd.concat(dfs).sort_values(['sourceId','sourceTime','targetTime'])
-        
     return df.drop_duplicates()

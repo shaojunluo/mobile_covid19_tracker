@@ -29,7 +29,7 @@ index_list = [utils.read_to_elastic(file_, 'app',
                                     n_thread = n_thread,
                                     # default_mode: action to take if the index already exists. 
                                     # valid value: skip, append, overwrite
-                                    mode = utils.ingestion_mode('app', default_mode = 'skip'), 
+                                    mode = utils.ingestion_mode('app', default_mode = 'overwrite'), 
                                     prefix = 'fortaleza_') for file_ in files]
 
 print('ingesting Pre-exist patient data')
@@ -39,7 +39,7 @@ index_list = [utils.read_to_elastic(file_, 'grandata',
                                     host_url = HOST_URL, 
                                     port = PORT, 
                                     n_thread = n_thread,
-                                    mode = utils.ingestion_mode('app', default_mode = 'append'),
+                                    mode = utils.ingestion_mode('grandata', default_mode = 'append'),
                                     prefix = 'fortaleza_') for file_ in files]
     
 ### ======================== Parrellel Processing =========================

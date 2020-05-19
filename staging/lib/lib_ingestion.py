@@ -68,7 +68,7 @@ def construct_index(index_name, host_url= 'http://localhost', port = 9200, mode 
             es.indices.delete(index = index_name)
             es.indices.create(index = index_name, body = settings)
             es.indices.put_mapping(index = index_name,body= es_mapping)
-        elif  mode == 'skip': # if choose skip then we do nothing
+        elif mode == 'skip': # if choose skip then we do nothing
             return None
         elif mode != 'append':    # if it is not append, then invalid
             raise ValueError("Invalid Mode, valid mode should be ['overwrite', 'skip', 'append']")
@@ -83,7 +83,7 @@ def construct_index(index_name, host_url= 'http://localhost', port = 9200, mode 
 def get_index_name(file_, prefix = ''):
     name = os.path.basename(file_).split('.')[0]
     # get date to query, we ignore the misalign of timezone
-    index_name = pd.to_datetime(name, format = '%b_%d').strftime('%m_%d')
+    index_name = pd.to_datetime(name, format = '%B_%d').strftime('%m_%d')
     return prefix + index_name
 
 # calculate derivativation of uneven time interval
