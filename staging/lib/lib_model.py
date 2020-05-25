@@ -273,7 +273,7 @@ def deliver_red_zone(red_zones, file_name = None, index_name = None,
     if index_name:
         start_time = time()
         # generate geo points
-        red_zones['location'] = red_zones.apply(lambda row: [row['lat'], row['long']], axis = 1)
+        red_zones['location'] = red_zones.apply(lambda row: [row['long'], row['lat']], axis = 1)
         red_zones = red_zones.drop(columns = ['lat','long'])
         # reset index
         esp = reset_es_index(host_url, port, index_type ='red_zones', index_name = index_name)

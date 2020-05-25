@@ -144,7 +144,7 @@ def process_for_ES(file_, data_source):
                          lat_col, long_col, t_col, 
                          group_col = id_col)
     # reformatting location
-    df['location'] = df.apply(lambda row: [row[lat_col], row[long_col]], axis = 1)
+    df['location'] = df.apply(lambda row: [row[long_col], row[lat_col]], axis = 1)
     
     # final cleaning
     df = df.rename(columns = {id_col: 'mobileId', t_col: 'acquisitionTime'}) # rename columns

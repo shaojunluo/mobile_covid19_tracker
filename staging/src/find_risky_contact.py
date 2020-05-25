@@ -51,5 +51,5 @@ risky_contact = utils.calculate_risky_contact(risky_contact, files, rho, person_
 utils.deliver_risky_person(risky_contact, status = None, file_name = output_folder + '/active_1st_layer.csv', subset = None)
 # deliver the risky person
 utils.deliver_risky_person(risky_contact, status = None, subset = 'app', file_name = output_folder + '/risky_ids.csv',
-                           index_name = 'most_recent_risky_ids',
+                           index_name = 'fortaleza_most_recent_risky_ids',
                            host_url= HOST_URL, port  = PORT, n_thread = n_thread)

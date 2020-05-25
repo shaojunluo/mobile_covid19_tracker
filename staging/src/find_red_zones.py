@@ -34,7 +34,6 @@ with open(os.path.dirname(__file__) + '/../config_params.yaml','r') as f:
 
 # get the clean list of persons
 print(f'running query for "{person_type}"')
-print(contact_file)
 query_df = utils.processing_track_df(contact_file, person_type, 
                                      days_before = 0,  # we don't look up the earlier day
                                      days_after = d_before + d_after, # but we look the later day longer
@@ -50,10 +49,10 @@ print('Running for layer 0 red zones', end = ' ')
 # get the final list of layer 0 redzone
 df_patient = model_utils.detect_red_zones(patient_file, patient_type, patient_folder, R = R)
 model_utils.deliver_red_zone(df_patient, file_name = deliver_folder + '/red_zones_layer_0.csv', 
-                             index_name = 'red_zones_layer_0', host_url = HOST_MAP, port = PORT_MAP,n_thread=n_thread)
+                             index_name = 'fortaleza_red_zones_layer_0', host_url = HOST_MAP, port = PORT_MAP,n_thread=n_thread)
 print('Running for layer 1 red zones', end = ' ')
 # get the final list of layer 1 redzone
 df_contact = model_utils.detect_red_zones(contact_file, person_type, contact_folder, R = R)
 model_utils.deliver_red_zone(df_contact, file_name = deliver_folder + '/red_zones_layer_1.csv', 
-                             index_name = 'red_zones_layer_1', host_url = HOST_MAP, port = PORT_MAP,n_thread=n_thread)
+                             index_name = 'fortaleza_red_zones_layer_1', host_url = HOST_MAP, port = PORT_MAP,n_thread=n_thread)
 

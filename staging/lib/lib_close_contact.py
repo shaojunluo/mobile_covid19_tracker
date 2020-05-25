@@ -35,7 +35,7 @@ def space_query(lat, lon, distance):
             "filter" : {
                 "geo_distance" : {
                     "distance" : str(distance) + 'm',
-                    "location" : [lat, lon]
+                    "location" : [lon, lat]
                     }
                 }
             }
@@ -72,8 +72,8 @@ def generate_contact_record(hit, row):
     result['targetId'] = hit['_source']['mobileId']
     result['targetDataSrc'] = hit['_source']['dataSource']
     result['targetTime'] = hit['_source']['acquisitionTime']
-    result['targetLat'] = hit['_source']['location'][0]
-    result['targetLong'] = hit['_source']['location'][1]
+    result['targetLat'] = hit['_source']['location'][1]
+    result['targetLong'] = hit['_source']['location'][0]
     result['targetMovingRate'] = hit['_source']['movingRate']
     
     return result

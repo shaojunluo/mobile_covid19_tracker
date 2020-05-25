@@ -71,8 +71,8 @@ def build_track(row, host_url = 'http://localhost',port = '9200', output_folder 
         # for output attach time zone
         df['acquisitionTime'] = pd.to_datetime(df['acquisitionTime'],utc=True).dt.tz_convert(row['time_zone'])
         df = df.sort_values('acquisitionTime')     # sort by time
-        df['lat'] = df['location'].apply(lambda x: x[0])
-        df['long'] = df['location'].apply(lambda x: x[1])
+        df['lat'] = df['location'].apply(lambda x: x[1])
+        df['long'] = df['location'].apply(lambda x: x[0])
         df = df.drop(columns = 'location')
         # save result
         df.to_csv(output_folder + '/' + row['mobileId'] +'.csv', index = False)
