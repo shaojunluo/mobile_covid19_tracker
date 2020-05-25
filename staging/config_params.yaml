@@ -1,29 +1,27 @@
 # working directory of the pipeline file
-working.directory: '/Users/shaojun/Projects/COVID19'
+working.directory: '/home/ec2-user/covid_19_tracker'
 
 # elasticsearch config parameters
 elasticsearch:
     records:
-        host: "http://localhost"
+        host: "172.20.0.132"
         port: "9200"
-        thread: 12
+        thread: 32
     users:
-        host: "http://localhost"
+        host: "172.20.0.243"
         port: "9200"
-        thread: 12
+        thread: 32
     maps:
-        host: "http://localhost"
+        host: "172.20.0.155"
         port: "9200"
-        thread: 12
+        thread: 32
 
-
-    
 # Parameter for data ingestion
 ingestion:
     # two data resources app and grandata for calculation, specify their location
     input.folder: 
-        app: "/Users/shaojun/Projects/COVID19/data/mobile_net_app"
-        grandata: "/Users/shaojun/Projects/COVID19/data/mobile_net_grandata"
+        app: "/home/ec2-user/data/app"
+        grandata: "/home/ec2-user/data/grandata"
 
 # parameter for step 1: track infected person
 track.person:
@@ -31,9 +29,9 @@ track.person:
     person.type: "patients" # which subset we choose 
     day.before: 14 # track days before infected
     day.after: 7   # track days after infected
-    lookup.day: "2020-04-15" # the day you stand to generate the past track ("none" for all, "today" for today, or "yyyy-mm-dd")
+    lookup.day: "2020-04-30" # the day you stand to generate the past track ("none" for all, "today" for today, or "yyyy-mm-dd")
     timezone: 'America/Fortaleza' # time zone of day
-    num.cores: 11 # cores for run the tacking
+    num.cores: 15 # cores for run the tacking
 
 # parameter for step 2: check close contact
 track.contact:
@@ -46,28 +44,28 @@ track.contact:
     # 2 for Matteo's rule have neighbor point(productization)
     filter.rule: 2
     timezone: 'America/Fortaleza'
-    num.cores: 11 # cores for run the tacking
+    num.cores: 15 # cores for run the tacking
 
 # parameter for contact model
 contact.model:
-    rho: 0.5 # rho of contact model
+    rho: 0.2 # rho of contact model
 
 # ===========  List the pipline file of every patient resources ================
 
 patients:
-    input.file: "/Users/shaojun/Projects/COVID19/patient_input/Filtered_association_May12.csv"
+    input.file: "/home/ec2-user/data/infected/Filtered_association_May12.csv"
     folders:  
-        track: "/Users/shaojun/Projects/COVID19/patient_track"            # step 2 output of patient track
-        contact: "/Users/shaojun/Projects/COVID19/close_contact"          # step 3.1 output patient to all contact
-        contact.profile:  "/Users/shaojun/Projects/COVID19/contact_profile" # step 3.2 output shorten contact profiles
-        track.contact: "/Users/shaojun/Projects/COVID19/contact_track"    # step 4 generate contacts
-        deliver: "/Users/shaojun/Projects/COVID19/deliver/test"         # step 5 generate deliver result
+        track: "/home/ec2-user/temp/patient_track"            # step 2 output of patient track
+        contact: "/home/ec2-user/temp/close_contact"          # step 3.1 output patient to all contact
+        contact.profile:  "/home/ec2-user/temp/contact_profile" # step 3.2 output shorten contact profiles
+        track.contact: "/home/ec2-user/temp/contact_track"    # step 4 generate contacts
+        deliver: "/home/ec2-user/deliver/"         # step 5 generate deliver result
 
 levels:
-    input.file: "/Users/shaojun/Projects/COVID19/patient_input/Filtered_association_May12.csv"
+    input.file: "/home/ec2-user/data/infected/Filtered_association_May12.csv"
     folders: 
-        track: "/Users/shaojun/Projects/COVID19/patient_track"            
-        contact: "/Users/shaojun/Projects/COVID19/close_contact"         
-        contact.profile:  "/Users/shaojun/Projects/COVID19/contact_profile" 
-        track.contact: "/Users/shaojun/Projects/COVID19/contact_track"
-        deliver: "/Users/shaojun/Projects/COVID19/deliver/test" 
+        track: "/home/ec2-user/temp/patient_track"            
+        contact: "/home/ec2-user/temp/close_contact"         
+        contact.profile:  "/home/ec2-user/temp/contact_profile" 
+        track.contact: "/home/ec2-user/temp/contact_track"
+        deliver: "/home/ec2-user/deliver/result_25" 

@@ -16,8 +16,8 @@ ingestion:
     latitude: "lat"
     longitude: "long"
   grandata:
-    id: "id"
-    time: "datastamp"
+    id: "mobileId"
+    time: "acquisitionTime"
     latitude: "lat"
     longitude: "long"
 

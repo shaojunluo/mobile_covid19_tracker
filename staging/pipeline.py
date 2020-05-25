@@ -76,18 +76,18 @@ check = BashOperator(
 # ======================Start of Main Pipeline ================#
 t1 = BashOperator(
     task_id='data_ingest',
-    bash_command=f'python {work_dir}/src/data_ingestion.py',
+    bash_command=f'python3 {work_dir}/src/data_ingestion.py',
     dag=dag_main,
 )
 
 t2 = BashOperator(
     task_id='patient_track',
-    bash_command=f'python {work_dir}/src/track_patient.py',
+    bash_command=f'python3 {work_dir}/src/track_patient.py',
     dag=dag_main,
 )
 t3 = BashOperator(
     task_id='close_contact_track',
-    bash_command=f'python {work_dir}/src/track_close_contact.py',
+    bash_command=f'python3 {work_dir}/src/track_close_contact.py',
     dag=dag_main,
 )
 
@@ -100,19 +100,19 @@ t3 = BashOperator(
 
 t4 = BashOperator(
     task_id='risky_contact',
-    bash_command= f'python {work_dir}/src/find_risky_contact.py',
+    bash_command= f'python3 {work_dir}/src/find_risky_contact.py',
     dag=dag_main,
 )
 
 t5 = BashOperator(
     task_id='red_zone',
-    bash_command= f'python {work_dir}/src/find_red_zones.py',
+    bash_command= f'python3 {work_dir}/src/find_red_zones.py',
     dag=dag_main,
 )
 
 wrap_up= BashOperator(
     task_id='wrap_up',
-    bash_command= f'python {work_dir}/src/update_run_time.py',
+    bash_command= f'python3 {work_dir}/src/update_run_time.py',
     dag=dag_main,
 )
 # ======================End of main pipeline=====================
