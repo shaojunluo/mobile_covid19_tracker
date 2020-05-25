@@ -16,8 +16,9 @@ with open(os.path.dirname(__file__) + '/../config_params.yaml', 'r') as stream:
     # choose the type of person we want to run
     person_type = params['track.person']['person.type']
     # elasticsearch related parameters
-    HOST_URL = params['elasticsearch']['host']
-    PORT = params['elasticsearch']['port']
+    HOST_URL = params['elasticsearch']['records']['host']
+    PORT = params['elasticsearch']['records']['port']
+
     # I/O settings
     input_folder = params[person_type]['folders']['track']
     output_folder = params[person_type]['folders']['contact']

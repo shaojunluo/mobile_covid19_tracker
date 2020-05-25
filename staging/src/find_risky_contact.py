@@ -17,6 +17,10 @@ import lib.lib_model as utils
 # read parameter and dependencies of the step
 with open(os.path.dirname(__file__) + '/../config_params.yaml','r') as f:
     params = yaml.safe_load(f)
+    # host for elasticsea
+    HOST_URL = params['elasticsearch']['users']['host']
+    PORT = params['elasticsearch']['users']['port']
+    n_thread = params['elasticsearch']['users']['thread']
     # choose the type of person we want to run
     person_type = params['track.person']['person.type']
     # I/O setting
@@ -28,6 +32,7 @@ with open(os.path.dirname(__file__) + '/../config_params.yaml','r') as f:
     m_after =  params['track.contact']['minute.after']
     max_d =    params['track.contact']['distance.max']
     num_cores =params['track.contact']['num.cores']
+
 
 # get the list of files for execute
 files = utils.retrieve_active_patients(output_folder +f'/active_{person_type}.csv', person_type, input_folder)
@@ -43,6 +48,8 @@ risky_contact = utils.calculate_risky_contact(risky_contact, files, rho, person_
                                               patient_list = output_folder + f'/active_{person_type}.csv', 
                                               output_folder = output_folder)
 # Find the first layer (including warmup points)
-utils.deliver_risky_person(risky_contact, output_folder + '/active_1st_layer.csv', subset = None)
+utils.deliver_risky_person(risky_contact, status = None, file_name = output_folder + '/active_1st_layer.csv', subset = None)
 # deliver the risky person
-utils.deliver_risky_person(risky_contact, output_folder + '/risky_ids.csv', subset = 'app')
+utils.deliver_risky_person(risky_contact, status = None, subset = 'app', file_name = output_folder + '/risky_ids.csv',
+                           index_name = 'most_recent_risky_ids',
+                           host_url= HOST_URL, port  = PORT, n_thread = n_thread)

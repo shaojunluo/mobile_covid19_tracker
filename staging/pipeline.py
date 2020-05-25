@@ -17,7 +17,7 @@ with open(os.path.dirname(__file__) + '/config_params.yaml') as f:
 default_args = {
     'owner': 'shaojun',
     'depends_on_past': False,
-    'start_date': datetime.now(), # time in utc
+    'start_date': datetime.now()-timedelta(hours = 1), # time in utc
     'email': ['sjlocke.1989@gmail.com'],
     'email_on_failure': False,
     'email_on_retry': False,
@@ -29,7 +29,7 @@ default_args = {
 dag_main = DAG(
     'mobile_COVID_tracker',
     description='Running pipline for ELT',
-    schedule_interval= timedelta(minutes = 30),
+    schedule_interval= timedelta(hours = 1),
     max_active_runs = 1,
     default_args=default_args
 )

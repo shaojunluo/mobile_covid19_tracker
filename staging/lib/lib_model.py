@@ -109,11 +109,10 @@ def recursive(p):
 
 # Perform risj calculatio
 def recursive_p(data,rho):
-    t_c = MAPPING['track.person']['1st_layer']['time']
     df = data.groupby(['sourceId','sourceDataSrc','targetId','targetDataSrc']).agg({'p':recursive,
                                                                           'sourceTime': min})
     # return only risky person
-    df =  df.reset_index().rename(columns = {'sourceTime': t_c})
+    df =  df.reset_index()
     return df[df['p'] >= rho]
 
 # calculate risky contacts
@@ -142,17 +141,72 @@ def calculate_risky_contact(risky_contact, files, rho, person_type,  patient_lis
     print(f'Rho {rho}: # of contacts: {contacts}, # of sources: {sources}, R note= {R: .2f}')
     return risky_contact
 
+def reset_es_index(host_url, port, index_type = 'risky_id',index_name = 'most_recent_risky_ids'):
+    # this is use to create request body
+    settings = {
+        "settings" : {
+            "number_of_shards": 1,
+            "number_of_replicas": 0
+        }
+    }
+    # mapping of index
+    maps = {}
+    maps['risky_ids'] = {
+        "properties": { 
+            'mobileId' :{"type":"keyword"},
+            'earliestContactTime' : {"type" : "date"},
+            "status": {"type": "integer"},
+        }
+    }
+    maps['red_zones'] = {
+        "properties": {
+            "mobileId" : {"type":"keyword"},
+            "maxTime" :  {"type": "date"},
+            "minTime" :  {"type": "date"},
+            "location" : {"type" : "geo_point"},
+            "delta" : {"type": "integer"}
+        }
+    }
+    # connect to elastic search
+    es = Elasticsearch([host_url +':'+ port],timeout=600)
+    # Reconstruct index if it is overwrite
+    if es.indices.exists(index_name):
+        es.indices.delete(index = index_name)
+    es.indices.create(index = index_name, body = settings)
+    es.indices.put_mapping(index = index_name,body= maps[index_type])
+    return Espandas(es)
+    
 # result dilivery
-def deliver_risky_person(risky_contact, file_name, subset = None):
-    t_c = MAPPING['track.person']['1st_layer']['time']
+def deliver_risky_person(risky_contact, status, file_name = None, subset = None, index_name = None,
+                         host_url = 'localhost', port = '9200', n_thread = 1):
     if subset:
         # Push notificationconsider only app users for risky result delivery
         risky_contact= risky_contact.loc[risky_contact['targetDataSrc']==subset]
     # condense risky contact
-    risky_person = risky_contact.drop_duplicates().groupby('targetId')[t_c].min()
-    risky_person = risky_person.reset_index(name = t_c)
-    # save the file
-    risky_person.to_csv(file_name, index = False)
+    risky_person = risky_contact.drop_duplicates().groupby('targetId').agg({'sourceTime': 'min','p':'max'})
+    risky_person = risky_person.reset_index()
+    # save to risky id indexes
+    id_c = MAPPING['track.person']['1st_layer']['id']
+    t_c = MAPPING['track.person']['1st_layer']['time']
+    risky_person = risky_person.rename(columns = {'targetId':id_c, 'sourceTime':t_c})
+    # attach status
+    if status:
+        risky_person['status'] = status
+    else:
+        risky_person['status'] = 1 + (risky_person['p'] > 0.9).astype(int)
+    # save files
+    if file_name:
+        # save the file
+        risky_person.to_csv(file_name, index = False)
+    if index_name:
+        start_time = time()
+        esp = reset_es_index(host_url, port, index_type = 'risky_ids',index_name = index_name)
+        # exporting to elastic search
+        esp.es_write(risky_person, index_name,thread_count = n_thread)
+        # exporting
+        print(f'Index: {index_name} Time Lapsed: {(time() - start_time)/60 :.2f} min', flush = True)
+        # safely close session
+        esp.client.transport.connection_pool.close()
 
 ### ============================ function to calculate the read zone =============================
 
@@ -208,8 +262,28 @@ def detect_red_zones(contact_file, person_type, input_folder, R = 8):
         dfs = list(p.map(partial(infected_zones, R = R), files))
     df = concat_files(dfs)
     print(f'Get {len(df)} records, Time Lapsed: {(time()-start_time)/60:.2f}min')
-    return df
-            
+    return df.drop_duplicates()
+
+def deliver_red_zone(red_zones, file_name = None, index_name = None, 
+                     host_url = 'localhost', port = '9200', n_thread = 1):
+    # save files
+    if file_name:
+        # save the file
+        red_zones.to_csv(file_name, index = False)
+    if index_name:
+        start_time = time()
+        # generate geo points
+        red_zones['location'] = red_zones.apply(lambda row: [row['lat'], row['long']], axis = 1)
+        red_zones = red_zones.drop(columns = ['lat','long'])
+        # reset index
+        esp = reset_es_index(host_url, port, index_type ='red_zones', index_name = index_name)
+        # exporting to elastic search
+        esp.es_write(red_zones, index_name,thread_count = n_thread)
+        # exporting
+        print(f'Index: {index_name} Time Lapsed: {(time() - start_time)/60 :.2f} min', flush = True)
+        # safely close session
+        esp.client.transport.connection_pool.close()
+    
 ## ==================== Select subset of patient from close contact list ===================
 
 # join close contact table one by one

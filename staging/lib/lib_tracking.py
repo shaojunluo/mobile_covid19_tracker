@@ -109,7 +109,6 @@ def processing_track_df(input_file, person_type, days_before = 15, days_after = 
     df[date_col] = pd.to_datetime(df[date_col]) # in here because only day present, therefore we don't proceed with utc
     # clean duplication and keep the earlist record
     df_distinct = df.groupby('mobileId')[date_col].min().reset_index()
-    print(df_distinct)
     # only get the df with earliest record
     df = df.merge(df_distinct, on = ['mobileId',date_col], how = 'inner')
     print(len(df))

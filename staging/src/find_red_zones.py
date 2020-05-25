@@ -11,8 +11,11 @@ import lib.lib_model as model_utils
 with open(os.path.dirname(__file__) + '/../config_params.yaml','r') as f:
     params = yaml.safe_load(f)
     # elasticserch related params
-    HOST_URL = params['elasticsearch']['host']
-    PORT = params['elasticsearch']['port']
+    HOST_URL = params['elasticsearch']['records']['host']
+    PORT = params['elasticsearch']['records']['port']
+    HOST_MAP = params['elasticsearch']['maps']['host']
+    PORT_MAP = params['elasticsearch']['maps']['port']
+    n_thread = params['elasticsearch']['maps']['thread']
     # days to query
     d_before =   params['track.person']['day.before']
     d_after =    params['track.person']['day.after']
@@ -46,10 +49,11 @@ utils.save_active_list(active_contact, deliver_folder, person_type)
 print('Running for layer 0 red zones', end = ' ')
 # get the final list of layer 0 redzone
 df_patient = model_utils.detect_red_zones(patient_file, patient_type, patient_folder, R = R)
-df_patient.drop_duplicates().to_csv(deliver_folder + '/red_zones_layer_0.csv', index = False)
-
+model_utils.deliver_red_zone(df_patient, file_name = deliver_folder + '/red_zones_layer_0.csv', 
+                             index_name = 'red_zones_layer_0', host_url = HOST_MAP, port = PORT_MAP,n_thread=n_thread)
 print('Running for layer 1 red zones', end = ' ')
 # get the final list of layer 1 redzone
 df_contact = model_utils.detect_red_zones(contact_file, person_type, contact_folder, R = R)
-df_contact.drop_duplicates().to_csv(deliver_folder + '/red_zones_layer_1.csv', index = False)
+model_utils.deliver_red_zone(df_contact, file_name = deliver_folder + '/red_zones_layer_1.csv', 
+                             index_name = 'red_zones_layer_1', host_url = HOST_MAP, port = PORT_MAP,n_thread=n_thread)
 

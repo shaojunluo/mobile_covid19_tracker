@@ -11,9 +11,9 @@ import lib.lib_ingestion as utils
 # load configuration file and fetch files
 with open(os.path.dirname(__file__) + '/../config_params.yaml','r') as f:
     params = yaml.safe_load(f)
-    HOST_URL = params['elasticsearch']['host']
-    PORT = params['elasticsearch']['port']
-    n_thread = params['elasticsearch']['thread']
+    HOST_URL = params['elasticsearch']['records']['host']
+    PORT = params['elasticsearch']['records']['port']
+    n_thread = params['elasticsearch']['records']['thread']
     input_app = params['ingestion']['input.folder']['app']
     input_grandata = params['ingestion']['input.folder']['grandata']
 
@@ -29,7 +29,7 @@ index_list = [utils.read_to_elastic(file_, 'app',
                                     n_thread = n_thread,
                                     # default_mode: action to take if the index already exists. 
                                     # valid value: skip, append, overwrite
-                                    mode = utils.ingestion_mode('app', default_mode = 'overwrite'), 
+                                    mode = utils.ingestion_mode('app', default_mode = 'skip'), 
                                     prefix = 'fortaleza_') for file_ in files]
 
 print('ingesting Pre-exist patient data')
@@ -39,7 +39,7 @@ index_list = [utils.read_to_elastic(file_, 'grandata',
                                     host_url = HOST_URL, 
                                     port = PORT, 
                                     n_thread = n_thread,
-                                    mode = utils.ingestion_mode('grandata', default_mode = 'append'),
+                                    mode = utils.ingestion_mode('grandata', default_mode = 'skip'),
                                     prefix = 'fortaleza_') for file_ in files]
     
 ### ======================== Parrellel Processing =========================
