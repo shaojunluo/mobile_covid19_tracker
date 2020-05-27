@@ -20,7 +20,16 @@ from espandas import Espandas
 with open(os.path.dirname(__file__) + '/../config_ontology.yaml','r') as f:
     # raw data ontology
     MAPPING = yaml.safe_load(f)
-    
+   
+# remapping the dataframe
+def remapping(df, origin, new):
+    for key, col in MAPPING['track.person'][origin].items():
+        # if find matched ontology
+        if (col in df.columns) and (key in MAPPING['track.person'][new]):
+            # rename column
+            df = df.rename(columns ={col: MAPPING['track.person'][new][key]})
+    return df
+
 # retrieve active patient
 def retrieve_active_patients(patient_file, person_type, input_folder):
     id_col = MAPPING['track.person'][person_type]['id']
