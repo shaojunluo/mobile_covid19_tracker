@@ -16,9 +16,8 @@ import lib.lib_model as utils_m
 with open(os.path.dirname(__file__) + '/../config_params.yaml','r') as f:
     params = yaml.safe_load(f)
     # elasticserch related params
-    HOST_URL = params['elasticsearch']['records']['host']
-    PORT = params['elasticsearch']['records']['port']
-    prefix = params['ingestion']['prefix']
+    HOST_URL = params['elasticsearch']['host']
+    PORT = params['elasticsearch']['port']
     # for tracking
     d_before =   params['track.person']['day.before']
     d_after =    params['track.person']['day.after']
@@ -33,7 +32,6 @@ with open(os.path.dirname(__file__) + '/../config_params.yaml','r') as f:
     # I/O location
     n_core_t = params['track.person']['num.cores']
     n_core_c = params['track.contact']['num.cores']
-    patient_type = 'patients'
     person_type = params['track.person']['person.type'] # read the person you want to track
     in_file =     params[person_type]['input.file']
     track_folder = params[person_type]['folders']['track']
@@ -42,10 +40,10 @@ with open(os.path.dirname(__file__) + '/../config_params.yaml','r') as f:
     contact_track_folder = params[person_type]['folders']['track.contact']
     deliver_folder = params[person_type]['folders']['deliver']
     max_chunk = 10
-    init_chunk = 0
+    init_chunk = 5
     skip = False
 
-print(f'Day before: {d_before}, day after {d_after}')
+print(f'Fay before: {d_before}, day after {d_after}')
 print(f'ds {max_d}, min before {m_before}, max after {m_after}')
 print(f'rho {rho}, lookup day {lookup_day}')
 # helper function for final way of cleanining
@@ -54,10 +52,6 @@ def undirectize(row):
         return row['sourceId'] + '-' + row['targetId']
     else:
         return row['targetId'] + '-' + row['sourceId']
-
-# initate deliver folder
-if not os.path.exists(deliver_folder):
-    os.mkdir(deliver_folder)
 
 # start expanding network from init chunk
 for k in range(init_chunk, max_chunk):
@@ -69,28 +63,22 @@ for k in range(init_chunk, max_chunk):
         if k == 0:
             d_b = d_before
             d_f = d_after
-            # transform the data column
-            df = pd.read_csv(in_file)
-            # remap dataframe and save
-            df = utils_m.remapping(df, patient_type, person_type)
-            df.to_csv(deliver_folder + f'/active_chunk_{k}.csv',index = False)
         else:
-            
+            # change input file
+            in_file = deliver_folder + f'/active_chunk_{k}.csv' 
             d_b = 0
             d_f = d_before + d_after
-        # change input file
-        in_file = deliver_folder + f'/active_chunk_{k}.csv' 
         # processing tracking df
         print(f'running query for level {k}')
         active_patients = utils_t.processing_track_df(in_file, person_type, 
                                                 days_before = d_b, 
                                                 days_after = d_f,
                                                 lookup_day= lookup_day,
-                                                prefix = prefix)
+                                                prefix = 'fortaleza_')
 
         # querying elasticsearch for track and output to files
         active_patients = utils_t.track_persons(active_patients,output_folder = track_folder, 
-                                               host_url = HOST_URL, port = PORT, num_cores = n_core_c)
+                                            host_url = HOST_URL, port = PORT, num_cores = n_core_c)
         # save active patients actually this one should be the same as original if k is not 0
         active_patients = utils_t.save_active_list(active_patients, deliver_folder, person_type, file_name = f'active_chunk_{k}')
         # again redundant lines but it is good to keep it. read candidate current chunk
@@ -98,7 +86,7 @@ for k in range(init_chunk, max_chunk):
         # Track the list of close contact from new chunk
         func = partial(utils_c.track_close_contact, output_folder = contact_folder, person_type = person_type, filtering = filter_rule, 
                                                 minutes_before = m_before, minutes_after = m_after, distance = max_d,
-                                                host_url = HOST_URL, port = PORT, index_prefix = prefix)
+                                                host_url = HOST_URL, port = PORT, index_prefix = 'fortaleza_')
         # Parrellel processing this chunk to all 
         with Pool(num_cores) as p:
             dfs = list(p.map(func, files))

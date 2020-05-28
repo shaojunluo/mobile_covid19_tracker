@@ -5,6 +5,7 @@ import sys
 import os
 from airflow import DAG
 from airflow.utils.dates import days_ago
+from airflow.operators.latest_only_operator import LatestOnlyOperator
 from airflow.operators.bash_operator import BashOperator
 from airflow.operators.python_operator import BranchPythonOperator
 
@@ -17,7 +18,7 @@ with open(os.path.dirname(__file__) + '/config_params.yaml') as f:
 default_args = {
     'owner': 'shaojun',
     'depends_on_past': False,
-    'start_date': datetime.now()-timedelta(hours = 1), # time in utc
+    'start_date': datetime.now()-timedelta(hours = 4), # time in utc
     'email': ['sjlocke.1989@gmail.com'],
     'email_on_failure': False,
     'email_on_retry': False,
@@ -29,18 +30,20 @@ default_args = {
 dag_main = DAG(
     'mobile_COVID_tracker',
     description='Running pipline for ELT',
-    schedule_interval= timedelta(hours = 1),
+    schedule_interval= timedelta(hours = 2),
     max_active_runs = 1,
     default_args=default_args
 )
 
 # Start of the Running
-t_start = BashOperator(
-    task_id='running_start',
-    bash_command='echo Running Start! Time: $(date +"%T")',
-    priority_weight = 100, # this is main pipeline
-    dag=dag_main,
-)
+#t_start = BashOperator(
+#    task_id='running_start',
+#    bash_command='echo Running Start! Time: $(date +"%T")',
+#    priority_weight = 100, # this is main pipeline
+#    dag=dag_main,
+#)
+
+t_start = LatestOnlyOperator(task_id='running_start', dag=dag_main)
 
 # Python executable to check the updates and trigger the main pipeline
 def check_latest(**kwargs):

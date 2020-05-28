@@ -39,7 +39,7 @@ index_list = [utils.read_to_elastic(file_, 'grandata',
                                     host_url = HOST_URL, 
                                     port = PORT, 
                                     n_thread = n_thread,
-                                    mode = utils.ingestion_mode('grandata', default_mode = 'skip'),
+                                    mode = utils.ingestion_mode('grandata', default_mode = 'append'),
                                     prefix = 'fortaleza_') for file_ in files]
     
 ### ======================== Parrellel Processing =========================

@@ -1,15 +1,15 @@
 {
     "elasticsearch":{
         "records" : {
-            "host": "http://localhost",
+            "host": "172.20.0.132",
             "port": "9200"
         },
         "users": {
-            "host": "http://localhost",
+            "host": "172.20.0.243",
             "port": "9200"
         },
         "maps": {
-            "host": "http://localhost",
+            "host": "172.20.0.155",
             "port": "9200"
         }
     },
