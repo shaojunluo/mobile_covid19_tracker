@@ -4,8 +4,9 @@ import networkx as nx
 from matplotlib import pyplot as plt
 
 l_max = 19
-wkdir = 'deliver/calibration_25'
+wkdir = 'deliver/result_pb'
 edge_list = pd.read_csv(wkdir + '/final_edges.csv', parse_dates= ['sourceTime'])
+edge_list = edge_list[edge_list['p'] > 0.9]
 chunks = [pd.read_csv(f'{wkdir}/active_chunk_{i}.csv', parse_dates= ['sourceTime']) for i in range(l_max)]
 
 # Get Graph

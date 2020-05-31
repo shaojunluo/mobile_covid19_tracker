@@ -23,6 +23,7 @@ with open(os.path.dirname(__file__) + '/../config_params.yaml','r') as f:
     in_file =    params[person_type]['input.file']
     out_folder = params[person_type]['folders']['track']
     deliver_folder = params[person_type]['folders']['deliver']
+    prefix = params['ingestion']['prefix']
 
 # get the clean list of personp
 print(f'running query for "{person_type}"')
@@ -30,7 +31,8 @@ active_patients = utils.processing_track_df(in_file, person_type,
                                          days_before = d_before, 
                                          days_after = d_after,
                                          lookup_day= lookup_day,
-                                         prefix = 'fortaleza_')
+                                         prefix = prefix)
+
 
 # querying elasticsearch and output to files (no need to parallel becasue it is fast)
 active_patients = utils.track_persons(active_patients,output_folder = out_folder, 

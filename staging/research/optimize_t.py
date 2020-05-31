@@ -16,8 +16,8 @@ import lib.lib_model as utils_m
 with open(os.path.dirname(__file__) + '/../config_params.yaml','r') as f:
     params = yaml.safe_load(f)
     # elasticserch related params
-    HOST_URL = params['elasticsearch']['host']
-    PORT = params['elasticsearch']['port']
+    HOST_URL = params['elasticsearch']['records']['host']
+    PORT = params['elasticsearch']['records']['port']
     # for tracking
     d_before =   params['track.person']['day.before']
     d_after =    params['track.person']['day.after']

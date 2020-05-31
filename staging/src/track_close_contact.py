@@ -30,6 +30,7 @@ with open(os.path.dirname(__file__) + '/../config_params.yaml', 'r') as stream:
     m_after =  params['track.contact']['minute.after']
     max_d =    params['track.contact']['distance.max']
     num_cores =params['track.contact']['num.cores']
+    prefix = params['ingestion']['prefix']
 
 print(f'running query for "{person_type}"')
 # read files
@@ -37,7 +38,7 @@ files = model_utils.retrieve_active_patients(deliver_folder + f'/active_{person_
 # Track the list of close contact
 func = partial(utils.track_close_contact, output_folder = output_folder, person_type = person_type, filtering = filter_rule, 
                                           minutes_before = m_before, minutes_after = m_after, distance = max_d,
-                                          host_url = HOST_URL, port = PORT, index_prefix = 'fortaleza_')
+                                          host_url = HOST_URL, port = PORT, index_prefix = prefix)
 
 # Parrellel processing patient to all 
 with Pool(num_cores) as p:

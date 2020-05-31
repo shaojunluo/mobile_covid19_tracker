@@ -16,6 +16,7 @@ with open(os.path.dirname(__file__) + '/../config_params.yaml','r') as f:
     n_thread = params['elasticsearch']['records']['thread']
     input_app = params['ingestion']['input.folder']['app']
     input_grandata = params['ingestion']['input.folder']['grandata']
+    prefix = params['ingestion']['prefix']
 
 ### ======================== Sequencial Processing ========================
 ### Best Run in local machine 
@@ -30,7 +31,7 @@ index_list = [utils.read_to_elastic(file_, 'app',
                                     # default_mode: action to take if the index already exists. 
                                     # valid value: skip, append, overwrite
                                     mode = utils.ingestion_mode('app', default_mode = 'skip'), 
-                                    prefix = 'fortaleza_') for file_ in files]
+                                    prefix = prefix) for file_ in files]
 
 print('ingesting Pre-exist patient data')
 files = glob(input_grandata + '/*.csv') # fetch files
@@ -40,7 +41,7 @@ index_list = [utils.read_to_elastic(file_, 'grandata',
                                     port = PORT, 
                                     n_thread = n_thread,
                                     mode = utils.ingestion_mode('grandata', default_mode = 'append'),
-                                    prefix = 'fortaleza_') for file_ in files]
+                                    prefix = prefix) for file_ in files]
     
 ### ======================== Parrellel Processing =========================
 ### use this if you have large machine and querying other server
