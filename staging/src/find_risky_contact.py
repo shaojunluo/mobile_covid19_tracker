@@ -32,6 +32,7 @@ with open(os.path.dirname(__file__) + '/../config_params.yaml','r') as f:
     m_after =  params['track.contact']['minute.after']
     max_d =    params['track.contact']['distance.max']
     num_cores =params['track.contact']['num.cores']
+    prefix = params['ingestion']['prefix']
 
 
 # get the list of files for execute
@@ -45,11 +46,13 @@ with Pool(num_cores) as p:
 risky_contact = utils.concat_files(result)
 # final result delivery
 risky_contact = utils.calculate_risky_contact(risky_contact, files, rho, person_type, 
-                                              patient_list = output_folder + f'/active_{person_type}.csv', 
+                                              patient_list = output_folder + f'/active_{person_type}.csv',
                                               output_folder = output_folder)
 # Find the first layer (including warmup points)
-utils.deliver_risky_person(risky_contact, status = None, file_name = output_folder + '/active_1st_layer.csv', subset = None)
-# deliver the risky person
-utils.deliver_risky_person(risky_contact, status = None, subset = 'app', file_name = output_folder + '/risky_ids.csv',
-                           index_name = 'fortaleza_most_recent_risky_ids',
+utils.deliver_risky_person(risky_contact, add_patients = False, status = None,
+                           file_name = output_folder + '/active_1st_layer.csv', subset = None)
+# deliver the risky person list (subset exclude warmup but include patient)
+utils.deliver_risky_person(risky_contact, add_patients = True, status = None, 
+                           subset = 'app', file_name = output_folder + '/risky_ids.csv',
+                           index_name = prefix + 'most_recent_risky_ids',
                            host_url= HOST_URL, port  = PORT, n_thread = n_thread)

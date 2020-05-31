@@ -97,10 +97,6 @@ def probabilistic_model(_input,_time,R,model='continuos'):
                                        'targetTime_max': 'sourceTime_max',
                                        'targetLat_avg' : 'sourceLat_avg',
                                        'targetLong_avg': 'sourceLong_avg'})
-    
-    # convert time zone back
-    for col in ['sourceTime','targetTime_min','targetTime_max']:
-        df[col] = df[col].dt.tz_convert(tz = MAPPING['track.person']['levels']['timezone'])
 
     # append selflink info
     df_clean = df_other.merge(df_self, on = 'sourceRefId', how = 'inner')
@@ -110,6 +106,11 @@ def probabilistic_model(_input,_time,R,model='continuos'):
     df_clean['p'] = pt * px
     # only return the positive overlap contact
     df_clean = df_clean[df_clean['p'] > 0]
+    
+    # convert time zone back
+    for col in ['sourceTime','targetTime_min','targetTime_max']:
+        df[col] = df[col].dt.tz_convert(tz = MAPPING['track.person']['levels']['timezone'])
+    
     # resturn
     return df_clean
 
@@ -190,14 +191,20 @@ def reset_es_index(host_url, port, index_type = 'risky_id',index_name = 'most_re
     return Espandas(es)
     
 # result dilivery
-def deliver_risky_person(risky_contact, status, file_name = None, subset = None, index_name = None,
-                         host_url = 'localhost', port = '9200', n_thread = 1):
+def deliver_risky_person(risky_contact, status, add_patients = False, file_name = None, subset = None, 
+                         index_name = None, host_url = 'localhost', port = '9200', n_thread = 1):
     if subset:
         # Push notificationconsider only app users for risky result delivery
         risky_contact= risky_contact.loc[risky_contact['targetDataSrc']==subset]
     # condense risky contact
     risky_person = risky_contact.drop_duplicates().groupby('targetId').agg({'sourceTime': 'min','p':'max'})
     risky_person = risky_person.reset_index()
+    # adding patient to the risky list
+    if add_patients:
+        patients = risky_contact.drop_duplicates().groupby('sourceId').agg({'sourceTime': 'min','p':'max'}) 
+        patients = patients.reset_index().rename({'sourceId':'targetId'})
+        risky_person = pd.concat([risky_person, patients],ignore_index=True, sort=False)
+    
     # save to risky id indexes
     id_c = MAPPING['track.person']['1st_layer']['id']
     t_c = MAPPING['track.person']['1st_layer']['time']
@@ -214,6 +221,7 @@ def deliver_risky_person(risky_contact, status, file_name = None, subset = None,
     if index_name:
         start_time = time()
         esp = reset_es_index(host_url, port, index_type = 'risky_ids',index_name = index_name)
+        risky_person[t_c] = pd.to_datetime(risky_person[t_c]).dt.strftime('%Y-%m-%dT%H:%M:%S')
         # exporting to elastic search
         esp.es_write(risky_person, index_name,thread_count = n_thread)
         # exporting
