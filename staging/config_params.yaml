@@ -22,6 +22,7 @@ ingestion:
     input.folder: 
         app: "/home/ec2-user/data/app"
         grandata: "/home/ec2-user/data/grandata"
+    prefix: "fortaleza_"
 
 # parameter for step 1: track infected person
 track.person:
@@ -37,7 +38,7 @@ track.person:
 track.contact:
     distance.max: 8 # diamiter ds, unit in meters
     minute.before: 0 # track how many minutes before
-    minute.after: 25 # track how many minutes after
+    minute.after: 30 # track how many minutes after
     # Filtering rule when generating the close contact
     # 0 to keep all records, including queries only have self contact
     # 1 remove queries only return self-contact
