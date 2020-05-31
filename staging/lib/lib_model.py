@@ -155,7 +155,7 @@ def calculate_risky_contact(risky_contact, files, rho, person_type,  patient_lis
     print(f'Rho {rho}: # of contacts: {contacts}, # of sources: {sources}, R note= {R: .2f}')
     return risky_contact
 
-def reset_es_index(host_url, port, index_type = 'risky_id',index_name = 'most_recent_risky_ids'):
+def reset_es_index(host_url, port, index_type = 'risky_ids',index_name = 'most_recent_risky_ids'):
     # this is use to create request body
     settings = {
         "settings" : {
@@ -172,6 +172,14 @@ def reset_es_index(host_url, port, index_type = 'risky_id',index_name = 'most_re
             "status": {"type": "integer"},
         }
     }
+    maps['new_risky_ids'] = {
+        "properties": { 
+            'mobileId' : {"type":"keyword"},
+            'updateAt' : {"type" : "date"},
+            "oldStatus": {"type": "integer"},
+            "newStatus": {"type": "integer"}
+        }
+    }
     maps['red_zones'] = {
         "properties": {
             "mobileId" : {"type":"keyword"},
@@ -181,6 +189,7 @@ def reset_es_index(host_url, port, index_type = 'risky_id',index_name = 'most_re
             "delta" : {"type": "integer"}
         }
     }
+
     # connect to elastic search
     es = Elasticsearch([host_url +':'+ port],timeout=600)
     # Reconstruct index if it is overwrite
@@ -189,10 +198,29 @@ def reset_es_index(host_url, port, index_type = 'risky_id',index_name = 'most_re
     es.indices.create(index = index_name, body = settings)
     es.indices.put_mapping(index = index_name,body= maps[index_type])
     return Espandas(es)
-    
+
+# escalating status
+def find_developing_status(risky_person, prev_file):
+    id_c = MAPPING['track.person']['1st_layer']['id']
+    # if file valid and exist
+    if prev_file and os.path.exists(prev_file):
+        prev_df = pd.read_csv(prev_file)
+    else: 
+        prev_df = pd.DataFrame(columns = risky_person.columns)
+    risky_person = risky_person.rename(columns={'status':'newStatus'})
+    df = risky_person[[id_c, 'newStatus']].merge(prev_df[[id_c, 'status']],
+                                                 on = id_c, how = 'left')
+    # fill the old non exist state with 0
+    df['oldStatus'] = df['status'].fillna(0)
+    df = df[df['newStatus'] > df['oldStatus']]
+    # update current time
+    df['updateAt'] = pd.Timestamp('now').strftime('%Y-%m-%dT%H:%M:%S')
+    # return delta
+    return df[[id_c, 'oldStatus','newStatus','updateAt']]
+ 
 # result dilivery
-def deliver_risky_person(risky_contact, status, add_patients = False, file_name = None, subset = None, 
-                         index_name = None, host_url = 'localhost', port = '9200', n_thread = 1):
+def deliver_risky_person(risky_contact, threshold = 0, add_patients = False, file_name = None, subset = None, 
+                         index_name = None, host_url = 'http://localhost', port = '9200', n_thread = 1):
     if subset:
         # Push notificationconsider only app users for risky result delivery
         risky_contact= risky_contact.loc[risky_contact['targetDataSrc']==subset]
@@ -202,32 +230,36 @@ def deliver_risky_person(risky_contact, status, add_patients = False, file_name 
     # adding patient to the risky list
     if add_patients:
         patients = risky_contact.drop_duplicates().groupby('sourceId').agg({'sourceTime': 'min','p':'max'}) 
-        patients = patients.reset_index().rename({'sourceId':'targetId'})
+        patients = patients.reset_index().rename(columns = {'sourceId':'targetId'})
         risky_person = pd.concat([risky_person, patients],ignore_index=True, sort=False)
     
     # save to risky id indexes
     id_c = MAPPING['track.person']['1st_layer']['id']
     t_c = MAPPING['track.person']['1st_layer']['time']
     risky_person = risky_person.rename(columns = {'targetId':id_c, 'sourceTime':t_c})
-    # attach status
-    if status:
-        risky_person['status'] = status
-    else:
-        risky_person['status'] = 1 + (risky_person['p'] > 0.9).astype(int)
-    # save files
-    if file_name:
-        # save the file
-        risky_person.to_csv(file_name, index = False)
+    # attach status by thresholding
+    risky_person['status'] = 1 + (risky_person['p'] > threshold).astype(int)
     if index_name:
         start_time = time()
+        # find new delta of persons (this is what we need to do for ingest)
+        new_risky_person = find_developing_status(risky_person, file_name)
+        # write to the new status
         esp = reset_es_index(host_url, port, index_type = 'risky_ids',index_name = index_name)
         risky_person[t_c] = pd.to_datetime(risky_person[t_c]).dt.strftime('%Y-%m-%dT%H:%M:%S')
         # exporting to elastic search
-        esp.es_write(risky_person, index_name,thread_count = n_thread)
-        # exporting
+        esp.es_write(risky_person, index_name, thread_count = n_thread)
+        
+        # write to changes of escalated ids
+        esp = reset_es_index(host_url, port, index_type = 'new_risky_ids',index_name = index_name + '_push')
+        esp.es_write(new_risky_person, index_name + '_push',thread_count = n_thread)
+        
         print(f'Index: {index_name} Time Lapsed: {(time() - start_time)/60 :.2f} min', flush = True)
         # safely close session
         esp.client.transport.connection_pool.close()
+    # save files
+    if file_name:
+        # update the file
+        risky_person.to_csv(file_name, index = False)
 
 ### ============================ function to calculate the read zone =============================
 

@@ -49,10 +49,10 @@ risky_contact = utils.calculate_risky_contact(risky_contact, files, rho, person_
                                               patient_list = output_folder + f'/active_{person_type}.csv',
                                               output_folder = output_folder)
 # Find the first layer (including warmup points)
-utils.deliver_risky_person(risky_contact, add_patients = False, status = None,
+utils.deliver_risky_person(risky_contact, add_patients = False, threshold = 0.9,
                            file_name = output_folder + '/active_1st_layer.csv', subset = None)
 # deliver the risky person list (subset exclude warmup but include patient)
-utils.deliver_risky_person(risky_contact, add_patients = True, status = None, 
+utils.deliver_risky_person(risky_contact, add_patients = True, threshold = 0.9, 
                            subset = 'app', file_name = output_folder + '/risky_ids.csv',
                            index_name = prefix + 'most_recent_risky_ids',
                            host_url= HOST_URL, port  = PORT, n_thread = n_thread)
