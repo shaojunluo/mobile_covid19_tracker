@@ -1,6 +1,9 @@
 API SERVER
 ===============
 
+### Description
+This project uses [Fast API](https://fastapi.tiangolo.com/) to create the webservice.
+
 ### Requirements
 
 Install the dependencies.
