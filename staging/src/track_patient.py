@@ -11,8 +11,10 @@ import lib.lib_tracking as utils
 with open(os.path.dirname(__file__) + '/../config_params.yaml','r') as f:
     params = yaml.safe_load(f)
     # elasticserch related params
-    HOST_URL = params['elasticsearch']['records']['host']
-    PORT = params['elasticsearch']['records']['port']
+    HOST_REC = params['elasticsearch']['records']['host']
+    HOST_USR = params['elasticsearch']['users']['host'] 
+    PORT_REC = params['elasticsearch']['records']['port']
+    PORT_USR = params['elasticsearch']['users']['port']
     # days to query
     d_before =   params['track.person']['day.before']
     d_after =    params['track.person']['day.after']
@@ -27,16 +29,14 @@ with open(os.path.dirname(__file__) + '/../config_params.yaml','r') as f:
 
 # get the clean list of personp
 print(f'running query for "{person_type}"')
-active_patients = utils.processing_track_df(in_file, person_type, 
-                                         days_before = d_before, 
-                                         days_after = d_after,
-                                         lookup_day= lookup_day,
-                                         prefix = prefix)
-
+active_patients = utils.processing_track_df(prefix + 'infected', person_type, extra_file= in_file,
+                                            days_before = d_before, days_after = d_after,
+                                            host_url = HOST_USR, port = PORT_USR,
+                                            lookup_day= lookup_day, prefix = prefix)
 
 # querying elasticsearch and output to files (no need to parallel becasue it is fast)
-active_patients = utils.track_persons(active_patients,output_folder = out_folder, 
-                                      host_url = HOST_URL, port = PORT, num_cores = n_core)
+active_patients = utils.track_persons(active_patients, output_folder = out_folder, 
+                                      host_url = HOST_REC, port = PORT_REC, num_cores = n_core)
 # save active patients for future use
 utils.save_active_list(active_patients, deliver_folder, person_type)
 

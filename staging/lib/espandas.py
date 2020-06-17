@@ -17,7 +17,7 @@ class Espandas(object):
         self.failed_ = None
         self.uid_name = None
 
-    def es_read(self, keys, index, doc_type):
+    def es_read(self, index, keys = None):
         """
         Read from an ElasticSearch index and return a DataFrame
         :param keys: a list of keys to extract in elasticsearch
@@ -30,21 +30,29 @@ class Espandas(object):
 
         # Collect records for all of the keys
         records = []
-        for key in keys:
-            try:
-                record = self.client.get(index=index, doc_type=doc_type, id=key)
-                self.successful_ += 1
-                if '_source' in record:
-                    records.append(record['_source'])
-            except NotFoundError as nfe:
-                print('Key not found: %s' % nfe)
-                self.failed_ += 1
+        if keys:
+            for key in keys:
+                try:
+                    record = self.client.get(index=index, id=key)
+                    self.successful_ += 1
+                    if '_source' in record:
+                        records.append(record['_source'])
+                except NotFoundError as nfe:
+                    print('Key not found: %s' % nfe)
+                    self.failed_ += 1
+        else:
+            body = {'query': {"match_all": {}}}
+             # scrolling scan (remember to scrolling otherwise can't get all)
+            pages =  helpers.scan(self.client,index = index, query = body,size = 10000,scroll = '2m')
+            # return first 10000 result
+            records = [page['_source'] for page in pages]
 
         # Prepare the records into a single DataFrame
-        df = None
         if records:
             df = pd.DataFrame(records).fillna(value=np.nan)
             df = df.reindex(sorted(df.columns), axis=1)
+        else:
+            df = None
         return df
 
 

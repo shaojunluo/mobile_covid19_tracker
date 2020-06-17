@@ -10,6 +10,7 @@ import numpy as np
 import pandas as pd
 import yaml
 from elasticsearch import Elasticsearch
+from espandas import Espandas
 
 # global executer
 with open(os.path.dirname(__file__) + '/../config_ontology.yaml','r') as f:
@@ -79,16 +80,35 @@ def build_track(row, host_url = 'http://localhost',port = '9200', output_folder 
         return True
 
 # processing the df for person to track
-def processing_track_df(input_file, person_type, days_before = 15, days_after = 15,
-                        lookup_day = 'today', prefix = ''):
+def processing_track_df(index_name, person_type, days_before = 15, days_after = 15, extra_file = '',
+                        lookup_day = 'today', host_url = 'localhost', port = '9200', prefix = ''):
     # read MAPPING
     id_col = MAPPING['track.person'][person_type]['id']
     date_col = MAPPING['track.person'][person_type]['time']
     time_zone = MAPPING['track.person'][person_type]['timezone'] # read time zone
     
-    # processing
-    df = pd.read_csv(input_file) # read file
-    df = df.rename(columns ={id_col: 'mobileId'}) # align ontoligy
+    es = Elasticsearch([host_url +':'+ port],timeout=600)
+    # Read Elasticsearch
+    if es.indices.exists(index_name):
+        print('reading elasticsearch')
+        esp = Espandas(es)
+        df_es = esp.es_read(index_name)
+        esp.client.transport.connection_pool.close()
+    else:
+        df_es = pd.DataFrame()
+    # Read other files
+    if extra_file != '':
+        df_tb = pd.read_csv(extra_file) # read file
+        df = df.rename(columns ={id_col: 'mobileId',
+                                 date_col: 'testDate'}) # align ontolig
+    else:
+        df_tb = pd.DataFrame()
+    
+    # concat two files
+    df = pd.concat([df_es, df_tb], ignore_index = True)
+    
+    # processing columns
+    df['testDate'] = pd.to_datetime(df['testDate']) 
     if 'status' in MAPPING['track.person'][person_type].keys():
         stat_col = MAPPING['track.person'][person_type]['status']
         dead_flag = MAPPING['track.person'][person_type]['flag.dead']
@@ -105,12 +125,10 @@ def processing_track_df(input_file, person_type, days_before = 15, days_after = 
         df[stat_col] = False
         df[dead_time] = ''
         dead_flag = True
-        
-    df[date_col] = pd.to_datetime(df[date_col]) # in here because only day present, therefore we don't proceed with utc
-    # clean duplication and keep the earlist record
-    df_distinct = df.groupby('mobileId')[date_col].min().reset_index()
-    # only get the df with earliest record
-    df = df.merge(df_distinct, on = ['mobileId',date_col], how = 'inner')
+    # clean duplication and keep the latest record
+    df_distinct = df.groupby('mobileId')['testDate'].max().reset_index()
+    # only get the df with latest record
+    df = df.merge(df_distinct, on = ['mobileId','testDate'], how = 'inner')
     # determine and filter by lookup day
     if lookup_day == 'today':
         lookup_day = pd.Timestamp.today()
@@ -119,8 +137,8 @@ def processing_track_df(input_file, person_type, days_before = 15, days_after = 
         lookup_day = pd.Timestamp(lookup_day)
         # filter the person with recent infection correspond to lookup_day, otherwise consider all.
         # filter long ago-patient
-        fil_past = df[date_col].dt.tz_localize(None) > lookup_day.tz_localize(None) - pd.Timedelta(days = days_after)
-        fil_future = df[date_col].dt.tz_localize(None) < lookup_day.tz_localize(None) # no patient in the future
+        fil_past = df['testDate'].dt.tz_localize(None) > lookup_day.tz_localize(None) - pd.Timedelta(days = days_after)
+        fil_future = df['testDate'].dt.tz_localize(None) < lookup_day.tz_localize(None) # no patient in the future
         df = df[fil_past & fil_future]
     else:
         print('lookup date is not specified, use all data')
@@ -129,7 +147,7 @@ def processing_track_df(input_file, person_type, days_before = 15, days_after = 
     with open(os.path.dirname(__file__) + '/../config_es_index.yaml','r') as stream:
         index_list = yaml.safe_load(stream)['index.ingested']
     # if the status is not "None" then it is dead, no need to track later days.
-    func = lambda x: get_query_index(x[date_col],index_list, days_before= days_before, 
+    func = lambda x: get_query_index(x['testDate'],index_list, days_before= days_before, 
                                                              days_after= days_after,
                                                              status = x[stat_col]!=dead_flag,
                                                              dead_time= x[dead_time],
@@ -156,7 +174,9 @@ def track_persons(query_df, output_folder, host_url = 'http://localhost', port =
 # save the active patients into file
 def save_active_list(active_patients, deliver_folder, person_type, file_name = None):
     id_col = MAPPING['track.person'][person_type]['id']
-    active_patients = active_patients.rename(columns ={'mobileId':id_col}) # reverse ontoligy
+    date_col = MAPPING['track.person'][person_type]['time'] 
+    active_patients = active_patients.rename(columns ={'mobileId':id_col,
+                                                       'testDate': date_col}) # reverse ontoligy
     if not os.path.exists(deliver_folder):
         os.mkdir(deliver_folder)
     # save
